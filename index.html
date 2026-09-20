@@ -7,205 +7,235 @@
 <meta name="description" content="Calculadora PERT/CPM completa: caminho crítico, folgas, diagrama de rede, Gantt, probabilidade de prazo e compressão de rede. Grátis, offline, sem cadastro.">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1A3A6B">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fontes/fontes.css">
 <style>
 :root{
-  --bg:#F5F7FA; --card:#FFFFFF; --card-2:#FAFBFD;
-  --ink:#16181D; --muted:#5B6472; --faint:#8C95A3;
-  --line:#E2E7EF; --line-2:#EDF1F6;
-  --azul:#1A3A6B; --azul-2:#2C5AA0; --azul-pale:#EAF0F9;
-  --crit:#C8402A; --crit-pale:#FCE7EC;
-  --ok:#0F766E; --ok-pale:#E2F2EF;
-  --warn:#B45309; --warn-pale:#FEF3C7;
-  --font-body:'Inter Tight',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --font-num:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
-  --r:12px; --sh:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.05);
-}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0E1116; --card:#161A21; --card-2:#1B212A;
-  --ink:#ECEFF4; --muted:#A2ACBB; --faint:#78828F;
-  --line:#272E38; --line-2:#1F252E;
-  --azul:#7FA8E8; --azul-2:#A8C4F0; --azul-pale:#182233;
-  --crit:#F0705A; --crit-pale:#2E1A18;
-  --ok:#5CC6B8; --ok-pale:#12241F;
-  --warn:#E3A44B; --warn-pale:#2A2113;
-  --sh:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
-}}
-:root[data-theme="dark"]{
-  --bg:#0E1116; --card:#161A21; --card-2:#1B212A;
-  --ink:#ECEFF4; --muted:#A2ACBB; --faint:#78828F;
-  --line:#272E38; --line-2:#1F252E;
-  --azul:#7FA8E8; --azul-2:#A8C4F0; --azul-pale:#182233;
-  --crit:#F0705A; --crit-pale:#2E1A18;
-  --ok:#5CC6B8; --ok-pale:#12241F;
-  --warn:#E3A44B; --warn-pale:#2A2113;
-  --sh:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+  /* ---- cores ---- */
+  --papel:#F1EEE8; --superficie:#FBF9F6; --superficie-2:#F7F4EF;
+  --borda:#DED8CE; --borda-int:#E7E2D9;
+  --tinta:#16243B; --tinta-2:#2C3A50; --apagado:#5C6A80; --apagadinho:#8A7F70;
+  --navy:#1A3A6B; --navy-escuro:#16243B; --sobre-navy:#F1EEE8;
+  --critico:#B3392C; --critico-fundo:#FBEFEC; --critico-claro:#F0A89C;
+  --folga:#2E7386; --folga-fundo:#E3EEF1;
+  --fantasma-borda:#9AA6B8; --fantasma-fundo:#EDEFF3;
+  --neutro:#BFB8AC; --aresta:#B0A99C;
+  --erro-fundo:#FBEAE6; --erro-borda:#E0B4AA; --erro-tinta:#7A2418;
+  /* ---- tipografia ---- */
+  --titulo:'Newsreader',Georgia,serif;
+  --texto:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
-.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
-h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
-a{color:var(--azul-2)}
+body{background:var(--papel);color:var(--tinta);font-family:var(--texto);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0;font-family:var(--titulo);font-weight:500}
+a{color:var(--navy)}
+a:hover{color:var(--critico)}
 button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--navy);outline-offset:-1px}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.olho{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--apagado)}
 
-header.top{position:sticky;top:0;z-index:40;background:var(--card);border-bottom:1px solid var(--line)}
-.top-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.02em;font-size:16px;white-space:nowrap}
-.brand .mark{width:27px;height:27px;border-radius:7px;background:var(--azul);color:#fff;display:grid;place-items:center;font-size:10px;font-family:var(--font-num);font-weight:600}
-.brand small{display:block;font-weight:500;font-size:10.5px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
-.spacer{flex:1}
-.projname{background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 9px;font-weight:600;max-width:240px;min-width:120px}
-.projname:hover{border-color:var(--line)}
-.projname:focus{outline:none;border-color:var(--azul-2);background:var(--card)}
-.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.14s}
-.btn:hover{border-color:var(--azul-2);color:var(--azul-2)}
-.btn.primary{background:var(--azul);border-color:var(--azul);color:#fff}
-.btn.primary:hover{filter:brightness(1.15);color:#fff}
-.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
-.btn.ghost:hover{background:var(--card-2);color:var(--ink)}
-.btn.sm{padding:4px 9px;font-size:12.5px}
-.btn.danger:hover{border-color:var(--crit);color:var(--crit)}
-.btn[disabled]{opacity:.4;cursor:not-allowed}
+/* ---------- header ---------- */
+header.topo{background:var(--navy);color:var(--sobre-navy)}
+.topo-in,.resumo-in,.nav-in,.rodape-in,main{max-width:1280px;margin:0 auto}
+.topo-in{padding:13px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:11px}
+.marca .selo{width:34px;height:34px;border:1.5px solid rgba(241,238,232,.55);border-radius:3px;display:grid;place-items:center;font-family:var(--mono);font-size:12px}
+.marca h1{font-size:20px;font-weight:400;line-height:1.15}
+.marca .assina{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.65}
+.espaco{flex:1}
+.bt-topo{background:rgba(255,255,255,.1);border:1px solid rgba(241,238,232,.35);color:var(--sobre-navy);border-radius:3px;padding:8px 13px;font-size:13.5px;cursor:pointer;min-height:38px}
+.bt-topo:hover{background:rgba(255,255,255,.22)}
+select.bt-topo{padding-right:8px}
 
-nav.tabs{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:48px;z-index:39}
-.tabs-in{max-width:1240px;margin:0 auto;padding:0 10px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
-.tabs-in::-webkit-scrollbar{display:none}
-.tab{border:0;background:transparent;padding:11px 13px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:7px}
-.tab:hover{color:var(--ink)}
-.tab.on{color:var(--azul-2);border-bottom-color:var(--azul-2)}
-.tab .n{font-family:var(--font-num);font-size:11px;background:var(--line-2);color:var(--muted);border-radius:5px;padding:1px 5px}
-.tab.on .n{background:var(--azul-pale);color:var(--azul-2)}
+/* ---------- faixa de resumo ---------- */
+.resumo{background:var(--navy-escuro);color:var(--sobre-navy)}
+.resumo-in{padding:12px 20px;display:flex;gap:34px;flex-wrap:wrap;align-items:flex-end}
+.resumo .bloco .olho{color:rgba(241,238,232,.6)}
+.resumo .val{font-family:var(--mono);font-size:21px;line-height:1.25;margin-top:2px}
+.resumo .critico{color:var(--critico-claro)}
+.resumo .fim{margin-left:auto;text-align:right}
 
-main{max-width:1240px;margin:0 auto;padding:18px 16px 80px}
-.panel{display:none}
-.panel.on{display:block;animation:fade .18s ease}
-@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
-.card+.card{margin-top:16px}
-.card-h{padding:13px 16px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.card-h h2{font-size:15.5px}
-.card-h .sub{margin:2px 0 0;font-size:13px;color:var(--muted);width:100%}
-.card-b{padding:16px}
-.card-b.tight{padding:0}
-.hint{font-size:12.5px;color:var(--muted)}
+/* ---------- nav ---------- */
+nav.abas{background:var(--superficie);border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:40}
+.nav-in{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 12px}
+.nav-in::-webkit-scrollbar{display:none}
+.aba{border:0;background:transparent;color:#6B7688;padding:12px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent;min-height:44px}
+.aba:hover{background:var(--papel);color:var(--tinta)}
+.aba.on{color:var(--navy);border-bottom-color:var(--navy)}
+.aba .n{width:19px;height:19px;border:1px solid currentColor;border-radius:999px;display:grid;place-items:center;font-family:var(--mono);font-size:10.5px}
 
-.tblwrap{overflow-x:auto}
-table.grid{width:100%;border-collapse:collapse;font-size:14px}
-table.grid th{background:var(--card-2);text-align:left;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-table.grid td{padding:5px 8px;border-bottom:1px solid var(--line-2);vertical-align:middle}
-table.grid tr:last-child td{border-bottom:0}
-table.grid tr.crit td{background:var(--crit-pale)}
-table.grid input,table.grid select{width:100%;background:transparent;border:1px solid transparent;border-radius:7px;padding:6px 7px}
-table.grid input:hover,table.grid select:hover{border-color:var(--line)}
-table.grid input:focus,table.grid select:focus{outline:none;border-color:var(--azul-2);background:var(--card)}
-table.grid input.err{border-color:var(--crit);background:var(--crit-pale)}
-table.grid td.n{font-family:var(--font-num);text-align:center;font-variant-numeric:tabular-nums}
-.c-id input{font-family:var(--font-num);font-weight:700;text-align:center}
-.c-n input{text-align:center;font-family:var(--font-num)}
-.w-id{width:64px}.w-num{width:82px}.w-pred{min-width:130px}
-.rowbtn{border:0;background:transparent;color:var(--faint);cursor:pointer;padding:4px 7px;border-radius:6px;line-height:1;font-size:15px}
-.rowbtn:hover{background:var(--crit-pale);color:var(--crit)}
-.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:20px;background:var(--azul-pale);color:var(--azul-2)}
-.tag.crit{background:var(--crit-pale);color:var(--crit)}
-.tag.ok{background:var(--ok-pale);color:var(--ok)}
-.tag.warn{background:var(--warn-pale);color:var(--warn)}
+main{padding:30px 20px 90px}
+.painel{display:none}
+.painel.on{display:block}
 
-.seg{display:inline-flex;background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
-.seg button{border:0;background:transparent;padding:5px 11px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
-.seg button.on{background:var(--card);color:var(--azul-2);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+/* ---------- cabeçalhos de seção ---------- */
+.sec{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.sec h2{font-size:31px;line-height:1.1}
+.sec h3{font-size:21px}
+.apoio{font-size:14.5px;color:var(--apagado);max-width:66ch;margin:6px 0 0;width:100%}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px}
-.kpi .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700}
-.kpi .v{font-family:var(--font-num);font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:3px}
-.kpi .s{font-size:12px;color:var(--muted)}
-.kpi.crit{border-color:var(--crit);background:var(--crit-pale)}
-.kpi.crit .v{color:var(--crit)}
+/* ---------- botões ---------- */
+.bt{border:1px solid var(--borda);background:#fff;color:var(--tinta);border-radius:3px;padding:9px 14px;font-size:13.5px;font-weight:500;cursor:pointer;min-height:38px}
+.bt:hover{border-color:var(--navy)}
+.bt.primario{background:var(--navy);border-color:var(--navy);color:var(--sobre-navy);font-weight:600}
+.bt.primario:hover{background:var(--navy-escuro)}
+.bt.perigo{color:var(--critico);border-color:var(--borda)}
+.bt.perigo:hover{border-color:var(--critico);background:var(--erro-fundo)}
+.bt.on{background:var(--navy);border-color:var(--navy);color:var(--sobre-navy)}
+.bt[disabled]{opacity:.45;cursor:not-allowed}
+.bt.mini{padding:6px 10px;font-size:12.5px;min-height:32px}
+.segm{display:inline-flex;background:var(--borda-int);border-radius:4px;padding:3px;gap:3px}
+.segm button{border:0;background:transparent;border-radius:3px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--apagado);cursor:pointer;min-height:36px}
+.segm button.on{background:var(--navy);color:var(--sobre-navy)}
 
-.alert{border-radius:10px;padding:11px 13px;font-size:13.5px;display:block;margin-bottom:12px}
-.alert.err{background:var(--crit-pale);color:var(--crit);border:1px solid color-mix(in srgb,var(--crit) 35%,transparent)}
-.alert.warn{background:var(--warn-pale);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
-.alert.info{background:var(--azul-pale);color:var(--azul-2);border:1px solid color-mix(in srgb,var(--azul-2) 28%,transparent)}
-.alert b{display:block;margin-bottom:2px}
-.alert ul{margin:4px 0 0;padding-left:18px}
+/* ---------- cards e tabelas ---------- */
+.card{background:var(--superficie);border:1px solid var(--borda);border-radius:5px}
+.card+.card{margin-top:18px}
+.card-corpo{padding:18px}
+.rolar{overflow-x:auto}
+table.tab{width:100%;border-collapse:collapse;font-size:15px}
+table.tab th{text-align:left;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--apagado);font-weight:600;padding:10px 12px;background:var(--papel);border-bottom:1px solid var(--borda)}
+table.tab td{padding:8px 12px;border-bottom:1px solid var(--borda-int);font-family:var(--mono)}
+table.tab tr:last-child td{border-bottom:0}
+table.tab.navy th{background:var(--navy);color:var(--sobre-navy);border-bottom:0}
+table.tab.navy th.dir,table.tab.navy td.dir{text-align:right}
+table.tab .txt{font-family:var(--texto)}
+table.tab tr.crit td{background:var(--critico-fundo)}
+table.tab tr.crit td.cod,table.tab tr.crit td.ft,table.tab tr.crit td.sit{color:var(--critico)}
+table.tab input{width:100%;border:1px solid var(--borda);background:#fff;border-radius:3px;padding:9px 10px;font-family:var(--mono);font-size:14px;min-height:38px}
+table.tab input.cod,table.tab input.pred{text-transform:uppercase}
+.te{color:var(--navy);font-weight:600}
+.remover{width:30px;height:30px;border:1px solid var(--borda);background:#fff;border-radius:3px;color:var(--apagado);cursor:pointer;line-height:1}
+.remover:hover{background:var(--erro-fundo);color:var(--critico);border-color:var(--erro-borda)}
+.barra-acoes{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:var(--superficie-2);border-top:1px solid var(--borda-int)}
+.w-cod{width:110px}.w-dur{width:120px}.w-num{width:96px}.w-x{width:44px}
+.min560{min-width:560px}.min660{min-width:660px}
 
-.stage{overflow:auto;background:var(--card-2);border-radius:10px;border:1px solid var(--line-2)}
-.stage svg{display:block}
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);padding-top:10px}
-.legend i{display:inline-block;width:15px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
-.field{display:flex;flex-direction:column;gap:4px;min-width:110px}
-.field label{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:700}
-.field input,.field select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 9px}
-.field input:focus,.field select:focus{outline:none;border-color:var(--azul-2)}
-.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
-.path{font-family:var(--font-num);font-size:13.5px;padding:8px 11px;border-radius:8px;background:var(--card-2);border:1px solid var(--line-2);margin-bottom:7px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.path.crit{background:var(--crit-pale);border-color:color-mix(in srgb,var(--crit) 30%,transparent);color:var(--crit);font-weight:600}
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);padding:0;max-width:580px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,.28)}
-dialog::backdrop{background:rgba(10,14,20,.5)}
-.dlg-h{padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:700}
-.dlg-b{padding:16px;max-height:60vh;overflow:auto}
-.dlg-f{padding:12px 16px;border-top:1px solid var(--line-2);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.list-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
-.list-item .t{flex:1;min-width:0}
-.list-item .t b{display:block;font-size:14px}
-.list-item .t span{font-size:12px;color:var(--muted)}
-textarea.ta{width:100%;min-height:150px;border:1px solid var(--line);border-radius:9px;padding:10px;font-family:var(--font-num);font-size:12.5px;background:var(--card-2);resize:vertical}
-.foot{max-width:1240px;margin:0 auto;padding:22px 16px 40px;color:var(--faint);font-size:12.5px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.foot #visitas b{color:var(--muted);font-weight:700}
-.contato{max-width:1240px;margin:0 auto;padding:0 16px}
-.contato{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.contato>.ct-txt{flex:1;min-width:250px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh)}
-.contato h2{font-size:15.5px}
-.contato p{margin:4px 0 0;font-size:13.5px;color:var(--muted)}
-.contato .btn{padding:11px 20px}
-@media (max-width:640px){.contato{padding:0 10px}.contato .btn{width:100%;justify-content:center}}
-.steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.step{flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card-2)}
-.step.on{border-color:var(--azul-2);background:var(--azul-pale)}
-.step b{font-size:13px;display:block}
-.step span{font-size:12px;color:var(--muted)}
+/* ---------- avisos ---------- */
+.faixa-erro{background:var(--erro-fundo);border:1px solid var(--erro-borda);border-left:4px solid var(--critico);color:var(--erro-tinta);border-radius:4px;padding:12px 15px;margin-bottom:18px;font-size:14px}
+.faixa-erro b{display:block;margin-bottom:3px}
+.faixa-erro ul{margin:4px 0 0;padding-left:18px}
+.nota{background:var(--folga-fundo);border:1px solid #C9DDE3;border-left:4px solid var(--folga);border-radius:4px;padding:12px 15px;margin-bottom:14px;font-size:14px;color:var(--tinta-2)}
+.nota b{display:block}
+
+/* ---------- campos ---------- */
+.grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.campo{display:flex;flex-direction:column;gap:5px}
+.campo label{font-size:12.5px;font-weight:600;color:var(--apagado)}
+.campo input,.campo select{border:1px solid var(--borda);background:#fff;border-radius:3px;padding:10px;font-family:var(--mono);font-size:14px;min-height:40px}
+.duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+
+/* ---------- caminhos ---------- */
+.caminho{background:var(--superficie);border:1px solid var(--borda);border-left:4px solid var(--borda);border-radius:4px;padding:11px 15px;margin-bottom:8px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:14px}
+.caminho.crit{border-left-color:var(--critico)}
+.caminho .total{margin-left:auto;font-weight:600}
+.caminho .tag{font-family:var(--texto);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--critico);font-weight:600}
+
+/* ---------- palco de desenhos ---------- */
+.palco{background:var(--superficie);border:1px solid var(--borda);border-radius:5px;overflow:auto}
+.palco svg{display:block}
+.legenda{display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:var(--apagado);padding-top:12px}
+.legenda i{display:inline-block;width:16px;height:11px;border-radius:2px;margin-right:7px;vertical-align:middle}
+
+/* ---------- KPIs ---------- */
+.kpis{display:flex;gap:34px;flex-wrap:wrap;margin:16px 0}
+.kpi .v{font-family:var(--mono);font-size:26px;margin-top:2px}
+.kpi .v.navy{color:var(--navy)}
+.bloco-navy{background:var(--navy);color:var(--sobre-navy);border-radius:4px;padding:18px 20px;margin-top:14px}
+.bloco-navy .olho{color:rgba(241,238,232,.6)}
+.bloco-navy .grande{font-family:var(--mono);font-size:34px;line-height:1.1;margin:4px 0}
+.bloco-navy .nota-z{font-family:var(--mono);font-size:12.5px;opacity:.75}
+.cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0}
+.cards3 .c{border:1px solid var(--borda);background:var(--superficie);border-radius:5px;padding:16px 18px}
+.cards3 .c.navy{background:var(--navy);color:var(--sobre-navy);border-color:var(--navy)}
+.cards3 .c.navy .olho{color:rgba(241,238,232,.6)}
+.cards3 .c .v{font-family:var(--mono);font-size:30px;margin-top:3px}
+.cards3 .c .v.folga{color:var(--folga)}
+
+/* ---------- guia ---------- */
+.guia{max-width:74ch}
+.guia .card{padding:20px 22px;margin-bottom:14px}
+.guia h3{font-size:21px;margin-bottom:6px}
+.guia p{font-size:15.5px;line-height:1.65;color:var(--tinta-2);margin:0;max-width:80ch}
+.guia .conv{border:1px solid var(--borda);border-left:3px solid var(--navy);background:var(--superficie);border-radius:5px;padding:18px 22px}
+
+/* ---------- contato e rodapé ---------- */
+.contato{max-width:1280px;margin:0 auto;padding:0 20px 30px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.contato .txt{flex:1;min-width:250px;background:var(--superficie);border:1px solid var(--borda);border-radius:5px;padding:18px 20px}
+.contato h2{font-size:23px}
+.contato p{margin:4px 0 0;font-size:14.5px;color:var(--apagado)}
+footer.rodape{background:var(--navy-escuro);color:var(--sobre-navy)}
+.rodape-in{padding:20px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;font-size:13px}
+.rodape-in .dir{margin-left:auto;opacity:.75;text-align:right}
+.rodape-in .mono{opacity:.75}
+
+/* ---------- modais ---------- */
+dialog{border:1px solid var(--borda);border-radius:5px;background:var(--superficie);color:var(--tinta);padding:0;max-width:620px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(22,36,59,.45)}
+.dlg-h{padding:16px 20px;border-bottom:1px solid var(--borda-int);font-family:var(--titulo);font-size:21px}
+.dlg-b{padding:20px;max-height:62vh;overflow:auto}
+.dlg-f{padding:14px 20px;border-top:1px solid var(--borda-int);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--borda);border-radius:4px;margin-bottom:8px;background:#fff}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:14.5px;font-weight:600}
+.item .t span{font-size:12.5px;color:var(--apagado)}
+textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-radius:3px;padding:12px;font-family:var(--mono);font-size:13px;background:#fff;resize:vertical}
+.hint{font-size:12.5px;color:var(--apagado)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+
 @media print{
-  header.top,nav.tabs,.noprint{display:none!important}
-  .panel{display:block!important;page-break-after:always}
+  .noprint{display:none!important}
   body{background:#fff}
-  .card{box-shadow:none}
+  .painel{display:block!important;page-break-after:always}
+  .card,.palco{border-color:#ccc}
+  .resumo,footer.rodape{background:#fff;color:#000;border:1px solid #ccc}
 }
 @media (max-width:640px){
-  main{padding:14px 10px 70px}
-  .kpi .v{font-size:22px}
-  .brand small{display:none}
-  nav.tabs{top:46px}
+  main{padding:20px 12px 70px}
+  .sec h2{font-size:25px}
+  .resumo-in{gap:18px}
+  .resumo .fim{margin-left:0;text-align:left}
+  .contato{padding:0 12px 24px}
 }
 </style>
 </head>
 <body>
 
-<header class="top">
-  <div class="top-in">
-    <div class="brand"><span class="mark">CPM</span><span>PERT/CPM<small>@LMVN 2026</small></span></div>
-    <input class="projname" id="projName" value="Novo projeto" aria-label="Nome do projeto">
-    <span class="spacer"></span>
-    <button class="btn sm primary" id="btnAgente">✦ Assistente</button>
-    <button class="btn sm" id="btnExemplos">Exemplos</button>
-    <button class="btn sm" id="btnProjetos">Meus projetos</button>
-    <button class="btn sm" id="btnSalvar">Salvar</button>
-    <button class="btn sm ghost" id="btnTema" title="Alternar tema">◐</button>
+<header class="topo noprint">
+  <div class="topo-in">
+    <div class="marca">
+      <span class="selo">CP</span>
+      <span><h1>Calculadora PERT/CPM</h1><span class="assina">@LMVN 2026</span></span>
+    </div>
+    <span class="espaco"></span>
+    <button class="bt-topo" id="btnAgente">✦ Assistente</button>
+    <select class="bt-topo" id="selExemplos" aria-label="Exemplos"><option value="">Exemplos…</option></select>
+    <button class="bt-topo" id="btnSalvar">Salvar projeto</button>
+    <button class="bt-topo" id="btnProjetos">Abrir</button>
   </div>
 </header>
 
-<nav class="tabs">
-  <div class="tabs-in" id="tabs">
-    <button class="tab on" data-p="dados"><span class="n">1</span>Dados</button>
-    <button class="tab" data-p="result"><span class="n">2</span>Resultados</button>
-    <button class="tab" data-p="rede"><span class="n">3</span>Diagrama de rede</button>
-    <button class="tab" data-p="gantt"><span class="n">4</span>Gantt</button>
-    <button class="tab" data-p="pert"><span class="n">5</span>Probabilidade</button>
-    <button class="tab" data-p="crash"><span class="n">6</span>Compressão</button>
-    <button class="tab" data-p="guia"><span class="n">?</span>Guia</button>
+<div class="resumo">
+  <div class="resumo-in">
+    <div class="bloco"><div class="olho">Duração do projeto</div><div class="val" id="rDur">—</div></div>
+    <div class="bloco"><div class="olho">Atividades</div><div class="val" id="rAtiv">—</div></div>
+    <div class="bloco"><div class="olho">Caminho crítico</div><div class="val critico" id="rCrit">—</div></div>
+    <div class="bloco fim"><div class="olho">Término previsto</div><div class="val" id="rFim">—</div></div>
+  </div>
+</div>
+
+<nav class="abas noprint">
+  <div class="nav-in" id="tabs">
+    <button class="aba on" data-p="dados"><span class="n">1</span>Dados</button>
+    <button class="aba" data-p="result"><span class="n">2</span>Resultados</button>
+    <button class="aba" data-p="rede"><span class="n">3</span>Diagrama de rede</button>
+    <button class="aba" data-p="gantt"><span class="n">4</span>Gantt</button>
+    <button class="aba" data-p="pert"><span class="n">5</span>Probabilidade</button>
+    <button class="aba" data-p="crash"><span class="n">6</span>Compressão</button>
+    <button class="aba" data-p="guia"><span class="n">?</span>Guia</button>
   </div>
 </nav>
 
@@ -213,222 +243,230 @@ textarea.ta{width:100%;min-height:150px;border:1px solid var(--line);border-radi
 <div id="avisos"></div>
 
 <!-- ============ 1 · DADOS ============ -->
-<section class="panel on" id="p-dados">
-  <div class="card">
-    <div class="card-h">
-      <h2>Atividades do projeto</h2>
-      <span class="spacer"></span>
-      <div class="seg" id="segModo">
+<section class="painel on" id="p-dados">
+  <div class="sec">
+    <h2>Atividades do projeto</h2>
+    <div class="acoes noprint">
+      <div class="segm" id="segModo">
         <button data-m="cpm" class="on">CPM · duração única</button>
         <button data-m="pert">PERT · 3 estimativas</button>
       </div>
-      <p class="sub">Informe o código, a duração e as atividades predecessoras (separadas por vírgula). O cálculo roda sozinho a cada alteração.</p>
     </div>
-    <div class="card-b tight">
-      <div class="tblwrap"><table class="grid" id="tblDados"></table></div>
-    </div>
-    <div class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line-2)">
-      <button class="btn primary sm" id="btnAdd">+ Atividade</button>
-      <button class="btn sm" id="btnAdd5">+ 5 linhas</button>
-      <span class="spacer"></span>
-      <button class="btn sm" id="btnColar">Colar do Excel</button>
-      <button class="btn sm danger" id="btnLimpar">Limpar tudo</button>
-    </div>
+    <p class="apoio">Informe o código, a duração e as atividades predecessoras (separadas por vírgula). O cálculo roda sozinho a cada alteração.</p>
   </div>
 
   <div class="card">
-    <div class="card-h"><h2>Calendário e custos <span class="tag">opcional</span></h2>
-      <p class="sub">Usado no Gantt (datas reais) e na análise de compressão.</p></div>
-    <div class="card-b row">
-      <div class="field"><label>Início do projeto</label><input type="date" id="dtInicio"></div>
-      <div class="field"><label>Unidade</label><select id="unidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
-      <div class="field"><label>Dias úteis</label><select id="uteis"><option value="0">Corridos (7/7)</option><option value="1">Seg a sex (5/7)</option></select></div>
-      <div class="field"><label>Custo indireto / período</label><input type="number" id="custoInd" min="0" step="any" placeholder="0"></div>
+    <div class="rolar"><table class="tab min560" id="tblDados"></table></div>
+    <div class="barra-acoes noprint">
+      <button class="bt primario" id="btnAdd">+ Atividade</button>
+      <button class="bt" id="btnAdd5">+ 5 linhas</button>
+      <button class="bt" id="btnColar">Colar do Excel</button>
+      <button class="bt perigo" id="btnLimpar" style="margin-left:auto">Limpar tudo</button>
+    </div>
+    <div id="painelColar" hidden style="padding:18px;border-top:1px solid var(--borda-int)">
+      <p class="hint" style="margin-top:0">Cole as colunas na ordem <b>código · duração · predecessoras</b> (ou <b>código · o · m · p · predecessoras</b> no modo PERT). Uma atividade por linha, separadas por tabulação, ponto e vírgula ou dois espaços.</p>
+      <textarea class="ta" id="taColar" rows="6" placeholder="A&#9;6&#9;&#10;B&#9;8&#9;A"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <button class="bt primario" id="btnImportar">Importar</button>
+        <label class="hint"><input type="checkbox" id="chkSubstituir" checked> substituir as atividades atuais</label>
+      </div>
     </div>
   </div>
+
+  <div class="sec" style="margin-top:26px">
+    <h3>Calendário e custos <span class="olho">opcional</span></h3>
+    <p class="apoio">Usado no Gantt (datas reais) e na análise de compressão.</p>
+  </div>
+  <div class="card"><div class="card-corpo grade">
+    <div class="campo"><label for="dtInicio">Início do projeto</label><input type="date" id="dtInicio"></div>
+    <div class="campo"><label for="unidade">Unidade</label><select id="unidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
+    <div class="campo"><label for="uteis">Dias úteis</label><select id="uteis"><option value="0">Corridos (7/7)</option><option value="1">Seg a sex (5/7)</option></select></div>
+    <div class="campo"><label for="custoInd">Custo indireto / período</label><input type="number" id="custoInd" min="0" step="any" placeholder="0"></div>
+  </div></div>
 </section>
 
 <!-- ============ 2 · RESULTADOS ============ -->
-<section class="panel" id="p-result">
-  <div class="kpis" id="kpis"></div>
-  <div class="card">
-    <div class="card-h"><h2>Quadro de cálculo</h2>
-      <span class="spacer"></span>
-      <button class="btn sm" id="btnCSV">Exportar CSV</button>
-      <button class="btn sm" id="btnImprimir">Imprimir / PDF</button>
-      <p class="sub">ES = início mais cedo · EF = término mais cedo · LS = início mais tarde · LF = término mais tarde · FT = folga total · FL = folga livre.</p></div>
-    <div class="card-b tight"><div class="tblwrap"><table class="grid" id="tblResult"></table></div></div>
+<section class="painel" id="p-result">
+  <div class="sec">
+    <h2>Quadro de cálculo</h2>
+    <div class="acoes noprint">
+      <button class="bt" id="btnCSV">Exportar CSV</button>
+      <button class="bt" id="btnImprimir">Imprimir / PDF</button>
+    </div>
+    <p class="apoio">ES = início mais cedo · EF = término mais cedo · LS = início mais tarde · LF = término mais tarde · FT = folga total · FL = folga livre.</p>
   </div>
-  <div class="card">
-    <div class="card-h"><h2>Caminhos do projeto</h2>
-      <span class="spacer"></span>
-      <label class="hint"><input type="checkbox" id="soCriticos"> só os críticos</label>
-      <p class="sub">Todo caminho do início ao fim da rede, com a duração somada. O mais longo é o caminho crítico.</p></div>
-    <div class="card-b" id="listaCaminhos"></div>
+  <div class="card"><div class="rolar"><table class="tab navy min660" id="tblResult"></table></div></div>
+
+  <div class="sec" style="margin-top:26px">
+    <h3>Caminhos do projeto</h3>
+    <div class="acoes noprint"><label class="hint"><input type="checkbox" id="soCriticos"> só os críticos</label></div>
+    <p class="apoio">Todo caminho do início ao fim da rede, com a duração somada. O mais longo é o caminho crítico.</p>
   </div>
+  <div id="listaCaminhos"></div>
 </section>
 
 <!-- ============ 3 · REDE ============ -->
-<section class="panel" id="p-rede">
-  <div class="card">
-    <div class="card-h"><h2>Diagrama de rede (AON)</h2>
-      <span class="spacer"></span>
-      <div class="seg" id="segPasso">
-        <button data-s="0" class="on">Tudo</button>
-        <button data-s="1">1 · Forward</button>
-        <button data-s="2">2 · Backward</button>
-        <button data-s="3">3 · Folga</button>
+<section class="painel" id="p-rede">
+  <div class="sec">
+    <h2>Diagrama de rede (AON)</h2>
+    <div class="acoes noprint">
+      <div id="segPasso" style="display:flex;gap:6px">
+        <button class="bt mini" data-s="1">1 · Forward</button>
+        <button class="bt mini" data-s="2">2 · Backward</button>
+        <button class="bt mini on" data-s="3">3 · Folga</button>
       </div>
-      <button class="btn sm" id="btnPlay">▶ Animar</button>
-      <button class="btn sm" id="btnPNGrede">PNG</button>
-      <p class="sub">Cada caixa traz ES · EF na linha de cima, LS · LF embaixo e a folga à direita. Atividades críticas em vermelho.</p></div>
-    <div class="card-b">
-      <div id="passoTexto"></div>
-      <div class="stage" id="stageRede"></div>
-      <div class="legend">
-        <span><i style="background:var(--crit)"></i>Atividade crítica (folga = 0)</span>
-        <span><i style="background:var(--azul-2)"></i>Atividade com folga</span>
-        <span><i style="background:var(--line);border:1px dashed var(--muted)"></i>Início / Fim (fictícios)</span>
-      </div>
+      <button class="bt mini" id="btnPlay">▶ Animar</button>
+      <button class="bt mini" id="btnPNGrede">PNG</button>
     </div>
+    <p class="apoio">Cada caixa traz ES · EF na linha de cima, LS · LF embaixo e a folga à direita. Atividades críticas em vermelho.</p>
+  </div>
+  <div id="passoTexto"></div>
+  <div class="palco" id="stageRede"></div>
+  <div class="legenda">
+    <span><i style="background:var(--critico-fundo);border:1.5px solid var(--critico)"></i>Atividade crítica (folga = 0)</span>
+    <span><i style="background:#fff;border:1.5px solid var(--neutro)"></i>Atividade com folga</span>
+    <span><i style="background:var(--fantasma-fundo);border:1.5px dashed var(--fantasma-borda)"></i>Início / Fim (fictícios)</span>
   </div>
 </section>
 
 <!-- ============ 4 · GANTT ============ -->
-<section class="panel" id="p-gantt">
-  <div class="card">
-    <div class="card-h"><h2>Gráfico de Gantt</h2>
-      <span class="spacer"></span>
-      <label class="hint"><input type="checkbox" id="gSetas" checked> setas</label>
-      <label class="hint"><input type="checkbox" id="gFolga" checked> folga</label>
-      <label class="hint"><input type="checkbox" id="gTarde"> barras tardias</label>
-      <button class="btn sm" id="btnPNGgantt">PNG</button>
-      <p class="sub">Barras do ES ao EF. O tracejado mostra até onde a atividade pode se estender sem atrasar o projeto (LF).</p></div>
-    <div class="card-b">
-      <div class="stage" id="stageGantt"></div>
-      <div class="legend">
-        <span><i style="background:var(--crit)"></i>Crítica</span>
-        <span><i style="background:var(--azul-2)"></i>Com folga</span>
-        <span><i style="background:transparent;border:1.5px dashed var(--muted)"></i>Folga total</span>
-        <span><i style="background:var(--warn)"></i>Programação tardia (LS→LF)</span>
-      </div>
+<section class="painel" id="p-gantt">
+  <div class="sec">
+    <h2>Gráfico de Gantt</h2>
+    <div class="acoes noprint">
+      <button class="bt mini on" id="gFolga">folga</button>
+      <button class="bt mini" id="gTarde">barras tardias</button>
+      <button class="bt mini on" id="gSetas">setas</button>
+      <button class="bt mini" id="btnPNGgantt">PNG</button>
     </div>
+    <p class="apoio">Barras do ES ao EF. O tracejado mostra até onde a atividade pode se estender sem atrasar o projeto (LF).</p>
+  </div>
+  <div class="palco" id="stageGantt"></div>
+  <div class="legenda">
+    <span><i style="background:var(--critico)"></i>Crítica</span>
+    <span><i style="background:var(--navy)"></i>Com folga</span>
+    <span><i style="border:1.5px dashed var(--folga)"></i>Folga total</span>
+    <span><i style="background:var(--neutro)"></i>Programação tardia (LS→LF)</span>
   </div>
 </section>
 
-<!-- ============ 5 · PERT PROBABILIDADE ============ -->
-<section class="panel" id="p-pert">
+<!-- ============ 5 · PROBABILIDADE ============ -->
+<section class="painel" id="p-pert">
+  <div class="sec">
+    <h2>Probabilidade de prazo</h2>
+    <p class="apoio" id="pertApoio">A duração do projeto vira uma distribuição aproximadamente normal em torno do caminho crítico.</p>
+  </div>
   <div id="pertAviso"></div>
-  <div class="kpis" id="kpisPert"></div>
-  <div class="grid2">
-    <div class="card">
-      <div class="card-h"><h2>Probabilidade de cumprir um prazo</h2>
-        <p class="sub">Z = (prazo − duração esperada) ÷ desvio-padrão do caminho crítico.</p></div>
-      <div class="card-b">
-        <div class="row">
-          <div class="field" style="flex:1"><label>Prazo desejado</label><input type="number" id="prazoX" step="any"></div>
-        </div>
-        <div id="saidaProb" style="margin-top:14px"></div>
-        <div class="stage" id="stageNormal" style="margin-top:12px"></div>
+  <div class="duas">
+    <div class="card"><div class="card-corpo">
+      <h3 style="font-size:21px">Probabilidade de cumprir um prazo</h3>
+      <div class="campo" style="margin-top:12px;max-width:220px">
+        <label for="prazoX">Prazo desejado</label>
+        <input type="number" id="prazoX" step="any" style="font-size:18px">
       </div>
-    </div>
-    <div class="card">
-      <div class="card-h"><h2>Prazo para um nível de confiança</h2>
-        <p class="sub">Quanto tempo prometer para ter X% de chance de entregar dentro do prazo.</p></div>
-      <div class="card-b">
-        <div class="row">
-          <div class="field" style="flex:1"><label>Confiança (%)</label><input type="number" id="confP" value="95" min="1" max="99.9" step="any"></div>
-        </div>
-        <div id="saidaConf" style="margin-top:14px"></div>
-        <table class="grid" id="tblConf" style="margin-top:14px"></table>
+      <div id="saidaProb"></div>
+      <div id="stageNormal" style="margin-top:8px"></div>
+    </div></div>
+    <div class="card"><div class="card-corpo">
+      <h3 style="font-size:21px">Prazo para um nível de confiança</h3>
+      <div class="campo" style="margin-top:12px;max-width:220px">
+        <label for="confP">Confiança (%)</label>
+        <input type="number" id="confP" value="95" min="1" max="99.9" step="any" style="font-size:18px">
       </div>
-    </div>
+      <div id="saidaConf"></div>
+      <div class="rolar" style="margin-top:14px"><table class="tab" id="tblConf"></table></div>
+    </div></div>
   </div>
-  <div class="card">
-    <div class="card-h"><h2>Variabilidade por atividade</h2>
-      <p class="sub">te = (o + 4m + p) / 6 · variância = ((p − o) / 6)². A variância do projeto soma apenas as atividades do caminho crítico.</p></div>
-    <div class="card-b tight"><div class="tblwrap"><table class="grid" id="tblPert"></table></div></div>
+  <div class="sec" style="margin-top:26px">
+    <h3>Variabilidade por atividade</h3>
+    <p class="apoio">te = (o + 4m + p) / 6 · variância = ((p − o) / 6)². A variância do projeto soma apenas as atividades do caminho crítico.</p>
   </div>
+  <div class="card"><div class="rolar"><table class="tab navy" id="tblPert"></table></div></div>
 </section>
 
 <!-- ============ 6 · COMPRESSÃO ============ -->
-<section class="panel" id="p-crash">
-  <div class="card">
-    <div class="card-h"><h2>Compressão da rede (crashing)</h2>
-      <p class="sub">Informe a duração mínima possível e o custo por período acelerado. O algoritmo comprime sempre a alternativa mais barata que está em todos os caminhos críticos.</p></div>
-    <div class="card-b tight"><div class="tblwrap"><table class="grid" id="tblCrash"></table></div></div>
-    <div class="card-b row" style="border-top:1px solid var(--line-2)">
-      <div class="field"><label>Custo direto normal</label><input type="number" id="custoDir" min="0" step="any" placeholder="0"></div>
-      <div class="field"><label>Custo indireto / período</label><input type="number" id="custoInd2" min="0" step="any" placeholder="0"></div>
-      <div class="field"><label>Prazo alvo</label><input type="number" id="prazoAlvo" min="0" step="any" placeholder="mínimo"></div>
-      <button class="btn primary" id="btnCrash">Calcular compressão</button>
-    </div>
+<section class="painel" id="p-crash">
+  <div class="sec">
+    <h2>Compressão da rede</h2>
+    <p class="apoio">Informe a duração mínima possível e o custo por período acelerado. O algoritmo comprime sempre a alternativa mais barata que cobre todos os caminhos críticos.</p>
   </div>
-  <div class="card" id="cardCrashOut" style="display:none">
-    <div class="card-h"><h2>Passo a passo da compressão</h2>
-      <span class="spacer"></span><span class="tag" id="tagOtimo"></span></div>
-    <div class="card-b tight"><div class="tblwrap"><table class="grid" id="tblCrashOut"></table></div></div>
-    <div class="card-b"><div class="stage" id="stageCusto"></div>
-      <div class="legend">
-        <span><i style="background:var(--azul-2)"></i>Custo direto</span>
-        <span><i style="background:var(--warn)"></i>Custo indireto</span>
-        <span><i style="background:var(--crit)"></i>Custo total</span>
-      </div>
+  <div class="card"><div class="rolar"><table class="tab" id="tblCrash"></table></div></div>
+  <div class="card"><div class="card-corpo">
+    <div class="grade" style="align-items:end">
+      <div class="campo"><label for="custoDir">Custo direto normal</label><input type="number" id="custoDir" min="0" step="any" placeholder="0"></div>
+      <div class="campo"><label for="custoInd2">Custo indireto / período</label><input type="number" id="custoInd2" min="0" step="any" placeholder="0"></div>
+      <div class="campo"><label for="prazoAlvo">Prazo alvo</label><input type="number" id="prazoAlvo" min="0" step="any" placeholder="mínimo"></div>
+      <button class="bt primario noprint" id="btnCrash" style="height:40px">Calcular compressão</button>
     </div>
+  </div></div>
+  <div id="cardCrashOut" hidden>
+    <div class="cards3" id="crashKpis"></div>
+    <div class="sec" style="margin-top:8px"><h3>Passo a passo da compressão</h3></div>
+    <div class="card"><div class="rolar"><table class="tab navy" id="tblCrashOut"></table></div></div>
+    <div class="card" style="margin-top:18px"><div class="card-corpo">
+      <div class="palco" id="stageCusto" style="border:0;background:transparent"></div>
+      <div class="legenda">
+        <span><i style="background:var(--critico)"></i>Custo direto</span>
+        <span><i style="background:var(--folga)"></i>Custo indireto</span>
+        <span><i style="background:var(--navy)"></i>Custo total</span>
+      </div>
+    </div></div>
   </div>
 </section>
 
 <!-- ============ GUIA ============ -->
-<section class="panel" id="p-guia">
-  <div class="card"><div class="card-h"><h2>Como o cálculo funciona</h2></div>
-  <div class="card-b" style="max-width:760px">
-    <h3 style="font-size:15px;margin-bottom:6px">1 · Caminho de ida (forward pass)</h3>
-    <p class="hint" style="font-size:14px">Percorra a rede do início para o fim. O <b>ES</b> de uma atividade é o maior <b>EF</b> entre suas predecessoras (zero, se não houver nenhuma). O <b>EF</b> é <span class="num">ES + duração</span>. O maior EF da rede é a duração do projeto.</p>
-    <h3 style="font-size:15px;margin:16px 0 6px">2 · Caminho de volta (backward pass)</h3>
-    <p class="hint" style="font-size:14px">Agora do fim para o início. O <b>LF</b> da última atividade é a duração do projeto; nas demais, é o menor <b>LS</b> entre as sucessoras. O <b>LS</b> é <span class="num">LF − duração</span>.</p>
-    <h3 style="font-size:15px;margin:16px 0 6px">3 · Folgas</h3>
-    <p class="hint" style="font-size:14px"><b>Folga total</b> = LS − ES = LF − EF: quanto a atividade pode atrasar sem atrasar o <i>projeto</i>. <b>Folga livre</b> = menor ES das sucessoras − EF: quanto pode atrasar sem atrapalhar a <i>próxima</i> atividade. Folga total zero = atividade crítica.</p>
-    <h3 style="font-size:15px;margin:16px 0 6px">4 · PERT (três estimativas)</h3>
-    <p class="hint" style="font-size:14px">Quando a duração é incerta: <span class="num">te = (o + 4m + p) / 6</span> e <span class="num">σ² = ((p − o)/6)²</span>. A duração do projeto vira uma distribuição aproximadamente normal, com média igual à soma dos te críticos e variância igual à soma das variâncias críticas — daí sai a probabilidade de cumprir qualquer prazo.</p>
-    <h3 style="font-size:15px;margin:16px 0 6px">5 · Compressão</h3>
-    <p class="hint" style="font-size:14px">Para encurtar o projeto só adianta acelerar atividades <b>críticas</b>. Comprime-se sempre a de menor custo por período; quando surge um segundo caminho crítico, é preciso comprimir os dois ao mesmo tempo. O prazo ótimo é o que minimiza custo direto + custo indireto.</p>
-    <div class="alert info" style="margin-top:18px"><b>Convenção de datas</b>Os valores ES/EF/LS/LF estão em <i>fim de período</i>: uma atividade de 5 dias que começa no instante 0 termina no instante 5. No Gantt, o dia 1 do calendário corresponde ao instante 0.</div>
-  </div></div>
+<section class="painel" id="p-guia">
+  <div class="sec"><h2>Como o cálculo funciona</h2></div>
+  <div class="guia">
+    <div class="card"><h3>1 · Caminho de ida (forward pass)</h3>
+      <p>Percorra a rede do início para o fim. O <b>ES</b> de uma atividade é o maior <b>EF</b> entre suas predecessoras (zero, se não houver nenhuma). O <b>EF</b> é <span class="mono">ES + duração</span>. O maior EF da rede é a duração do projeto.</p></div>
+    <div class="card"><h3>2 · Caminho de volta (backward pass)</h3>
+      <p>Agora do fim para o início. O <b>LF</b> da última atividade é a duração do projeto; nas demais, é o menor <b>LS</b> entre as sucessoras. O <b>LS</b> é <span class="mono">LF − duração</span>.</p></div>
+    <div class="card"><h3>3 · Folgas</h3>
+      <p><b>Folga total</b> = LS − ES = LF − EF: quanto a atividade pode atrasar sem atrasar o <i>projeto</i>. <b>Folga livre</b> = menor ES das sucessoras − EF: quanto pode atrasar sem atrapalhar a <i>próxima</i> atividade. Folga total zero = atividade crítica.</p></div>
+    <div class="card"><h3>4 · PERT (três estimativas)</h3>
+      <p>Quando a duração é incerta: <span class="mono">te = (o + 4m + p) / 6</span> e <span class="mono">σ² = ((p − o)/6)²</span>. A duração do projeto vira uma distribuição aproximadamente normal, com média igual à soma dos te críticos e variância igual à soma das variâncias críticas — daí sai a probabilidade de cumprir qualquer prazo.</p></div>
+    <div class="card"><h3>5 · Compressão</h3>
+      <p>Para encurtar o projeto só adianta acelerar atividades <b>críticas</b>. Comprime-se sempre a de menor custo por período; quando surge um segundo caminho crítico, é preciso comprimir os dois ao mesmo tempo. O prazo ótimo é o que minimiza custo direto + custo indireto.</p></div>
+    <div class="conv"><h3 style="font-size:19px;margin-bottom:6px">Convenção de datas</h3>
+      <p>Os valores ES/EF/LS/LF estão em <i>fim de período</i>: uma atividade de 5 dias que começa no instante 0 termina no instante 5. No Gantt, o dia 1 do calendário corresponde ao instante 0.</p></div>
+  </div>
 </section>
 </main>
 
-<section class="contato">
-  <div class="ct-txt">
+<section class="contato noprint">
+  <div class="txt">
     <h2>Entre em contato</h2>
     <p>Dúvida sobre o cálculo, sugestão de melhoria ou achou algum erro? Me escreva — respondo.</p>
   </div>
-  <a class="btn primary" id="btnContato" href="mailto:laura.valencia@facc.ufrj.br?subject=Calculadora%20PERT%2FCPM">Enviar mensagem</a>
+  <a class="bt primario" id="btnContato" href="mailto:laura.valencia@facc.ufrj.br?subject=Calculadora%20PERT%2FCPM" style="text-decoration:none;display:inline-flex;align-items:center;padding:13px 22px">Enviar mensagem</a>
 </section>
 
-<footer class="foot">
-  <b style="color:var(--muted)">Calculadora PERT/CPM</b>
-  <span>@LMVN 2026</span>
-  <span class="spacer"></span>
-  <span id="visitas" hidden><b class="num"></b><span id="visitasRot"> visitas</span></span>
-  <span>Roda no navegador, offline. Os dados ficam no seu aparelho.</span>
+<footer class="rodape">
+  <div class="rodape-in">
+    <span>Calculadora PERT/CPM</span>
+    <span class="mono">@LMVN 2026</span>
+    <span class="mono" id="visitas" hidden><b></b><span id="visitasRot"> visitas</span></span>
+    <span class="dir">Roda no navegador, offline. Os dados ficam no seu aparelho.</span>
+  </div>
 </footer>
 
 <dialog id="dlgAgente">
   <div class="dlg-h">✦ Assistente do projeto</div>
   <div class="dlg-b">
     <p class="hint" style="margin-top:0">Descreva o projeto em português corrente — o que precisa ser feito, prazos que você já conhece, o que depende do quê. A assistente devolve a lista de atividades com durações e precedências para você conferir antes de aplicar.</p>
-    <div id="agChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
-    <textarea class="ta" id="agTexto" style="min-height:120px;font-family:var(--font-body);font-size:14px" placeholder="Ex.: Reforma de uma cafeteria de 60 m². Preciso de projeto, licença na prefeitura, demolição, elétrica e hidráulica, gesso, pintura, mobiliário sob medida e treinamento da equipe. A licença demora cerca de 3 semanas e o mobiliário é o que mais atrasa."></textarea>
-    <div class="row" style="margin-top:10px">
-      <div class="field"><label>Modo</label><select id="agModo"><option value="cpm">CPM · duração única</option><option value="pert">PERT · 3 estimativas</option></select></div>
-      <div class="field"><label>Unidade</label><select id="agUnidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
+    <div class="chips" id="agChips"></div>
+    <textarea class="ta" id="agTexto" style="font-family:var(--texto);font-size:14.5px" placeholder="Ex.: Reforma de uma cafeteria de 60 m². Preciso de projeto, licença na prefeitura, demolição, elétrica e hidráulica, gesso, pintura, mobiliário sob medida e treinamento da equipe. A licença demora cerca de 3 semanas e o mobiliário é o que mais atrasa."></textarea>
+    <div class="grade" style="margin-top:12px">
+      <div class="campo"><label for="agModo">Modo</label><select id="agModo"><option value="cpm">CPM · duração única</option><option value="pert">PERT · 3 estimativas</option></select></div>
+      <div class="campo"><label for="agUnidade">Unidade</label><select id="agUnidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
     </div>
-    <div id="agSaida" style="margin-top:14px"></div>
+    <div id="agSaida" style="margin-top:16px"></div>
   </div>
   <div class="dlg-f">
     <span class="hint" id="agAviso" style="margin-right:auto"></span>
-    <button class="btn sm" id="agFechar">Fechar</button>
-    <button class="btn sm primary" id="agGerar">Gerar atividades</button>
+    <button class="bt" id="agFechar">Fechar</button>
+    <button class="bt primario" id="agGerar">Gerar atividades</button>
   </div>
 </dialog>
 

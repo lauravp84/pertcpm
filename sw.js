@@ -1,6 +1,6 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-v5';
-const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json'];
+const CACHE = 'pertcpm-v6';
+const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json', './fontes/fontes.css'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
