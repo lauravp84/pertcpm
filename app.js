@@ -1014,6 +1014,25 @@ function ligar() {
 }
 function pararAnimacao() { if (animando) { clearInterval(animando); animando = null; } $('#btnPlay').textContent = '▶ Animar'; }
 
+/* ============================================================
+   CONTADOR DE VISITAS
+   Registra a visita e mostra o total. Só números agregados — nada
+   de identificador pessoal. Se o contador não estiver configurado
+   no servidor, a linha simplesmente não aparece.
+   ============================================================ */
+function contarVisita() {
+  try { fetch('/api/hit?p=/', { cache: 'no-store', keepalive: true }).catch(() => { }); } catch (e) { }
+  fetch('/api/stats', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.configurado || !d.total) return;
+      const el = $('#visitas'); if (!el) return;
+      el.querySelector('b').textContent = Number(d.total).toLocaleString('pt-BR');
+      el.hidden = false;
+    })
+    .catch(() => { });
+}
+
 /* ---------- arranque ---------- */
 (function () {
   try { const t = localStorage.getItem('pertcpm.tema'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { }
@@ -1022,5 +1041,6 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
   try { const u = localStorage.getItem('pertcpm.ultimo'); if (u) inicial = JSON.parse(u); } catch (e) { }
   carregar(inicial || estadoVazio());
   addEventListener('beforeunload', () => { try { localStorage.setItem('pertcpm.ultimo', JSON.stringify(state)); } catch (e) { } });
+  contarVisita();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
 })();

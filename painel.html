@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Painel de acessos · Calculadora PERT/CPM</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../assets/base.css">
+<style>
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:6px 0 26px}
+@media(min-width:720px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+.kpi .v{font-family:var(--fd);font-weight:800;font-size:34px;color:var(--navy);line-height:1}
+.kpi .r{font-family:var(--fm);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);margin-top:6px}
+.bloco{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:22px}
+.bloco h3{font-family:var(--fd);font-weight:700;font-size:19px;color:var(--navy);margin:0 0 4px}
+.bloco p.leg{margin:0 0 16px;color:var(--ink-muted);font-size:14.5px}
+table.dados{width:100%;border-collapse:collapse;font-size:15px}
+table.dados th{background:var(--navy);color:#fff;font-family:var(--fm);font-size:11.5px;font-weight:500;
+letter-spacing:.05em;padding:9px 10px;text-align:left}
+table.dados td{border-bottom:1px solid var(--border);padding:9px 10px;color:var(--ink-muted)}
+table.dados td.n{font-family:var(--fm);color:var(--navy);text-align:right;white-space:nowrap}
+table.dados tr:last-child td{border-bottom:none}
+.chave{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.chave input{flex:1;min-width:180px;padding:11px 13px;border:1px solid var(--border);border-radius:9px;font-size:16px}
+.chave button{padding:11px 18px;border:none;border-radius:9px;background:var(--navy);color:#fff;
+font-family:var(--fb);font-weight:700;font-size:15px;cursor:pointer}
+.aviso{border-left:5px solid var(--gold);background:var(--gold-light);border-radius:0 var(--r) var(--r) 0;
+padding:16px 19px;font-size:15.5px}
+.aviso code{font-family:var(--fm);font-size:13px;background:rgba(0,0,0,.05);padding:2px 6px;border-radius:4px}
+.aviso ol{margin:10px 0 0 18px;padding:0}
+.aviso li{margin-bottom:7px}
+</style>
+</head>
+<body>
+
+<div class="barra"><div class="barra-topo">
+<a class="home-link" href="../"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Sumário</a>
+<div class="barra-tit">Painel de acessos</div>
+</div></div>
+
+<main class="pagina">
+<div class="sec-head">
+<div class="eyebrow">Uso do site</div>
+<h1 class="h2">Quantas pessoas entraram</h1>
+<p class="sub">Números agregados do próprio site, sem cookies e sem identificar aluno. Visitas contam aberturas de página; pessoas contam aparelhos distintos por dia.</p>
+</div>
+
+<div class="chave" id="chave" hidden>
+<input id="k" type="password" placeholder="chave de acesso" autocomplete="off">
+<button onclick="salvarChave()">Ver os números</button>
+</div>
+
+<div id="conteudo"></div>
+</main>
+
+<footer>@LMVN 2026 · GEO · @LMVN 2026<br>Profª Laura V.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString('pt-BR');
+const CH='geo_painel_chave';
+
+function salvarChave(){
+ try{localStorage.setItem(CH,$('k').value.trim());}catch(e){}
+ carregar();
+}
+
+function chave(){ try{return localStorage.getItem(CH)||'';}catch(e){return '';} }
+
+function ultimos(serie,n){ return serie.slice(-n); }
+
+function grafico(serie){
+ const dados=ultimos(serie,60);
+ if(!dados.length) return '<p class="leg">Sem registros ainda.</p>';
+ const W=760,H=220,ml=42,mb=30,mt=10,mr=8;
+ const max=Math.max(4,...dados.map(d=>d.visitas));
+ const lw=(W-ml-mr)/dados.length;
+ const y=v=>mt+(H-mt-mb)*(1-v/max);
+ let barras='',rot='';
+ dados.forEach((d,i)=>{
+  const x=ml+i*lw, h=(H-mt-mb)-(y(d.visitas)-mt);
+  barras+=`<rect x="${(x+lw*.15).toFixed(1)}" y="${y(d.visitas).toFixed(1)}" width="${(lw*.7).toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" fill="#1A3A6B" rx="2"><title>${d.dia}: ${d.visitas} visitas, ${d.pessoas} pessoas</title></rect>`;
+  const passo=Math.ceil(dados.length/6);
+  if(i%passo===0||i===dados.length-1)
+   rot+=`<text x="${(x+lw/2).toFixed(1)}" y="${H-10}" text-anchor="middle" font-family="DM Mono,monospace" font-size="10.5" fill="#5A5A5A">${d.dia.slice(8)}/${d.dia.slice(5,7)}</text>`;
+ });
+ let eixo='';
+ [0,.5,1].forEach(f=>{const v=Math.round(max*f);
+  eixo+=`<line x1="${ml}" y1="${y(v)}" x2="${W-mr}" y2="${y(v)}" stroke="#E0DDD6" stroke-width="1"/>
+  <text x="${ml-8}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-family="DM Mono,monospace" font-size="10.5" fill="#5A5A5A">${v}</text>`;});
+ return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Visitas por dia">${eixo}${barras}${rot}</svg>`;
+}
+
+function nomePagina(p){
+ const mapa={'/':'Sumário','/painel':'Painel','/quanti':'Quantitativo'};
+ if(mapa[p]) return mapa[p];
+ const m=/^\/t(\d+)(?:\/(.*))?$/.exec(p);
+ if(m){ const t='Tópico '+m[1]; return m[2]?t+' · '+m[2].replace('.html','').replace(/-/g,' '):t+' · página do tópico'; }
+ return p;
+}
+
+async function carregar(){
+ const alvo=$('conteudo');
+ alvo.innerHTML='<p class="sub">carregando…</p>';
+ let d;
+ try{
+  const r=await fetch('/api/stats?k='+encodeURIComponent(chave()),{cache:'no-store'});
+  d=await r.json();
+ }catch(e){ alvo.innerHTML='<div class="aviso">Não consegui falar com o servidor. Recarregue a página.</div>'; return; }
+
+ if(!d.configurado){
+  alvo.innerHTML=`<div class="aviso"><b>O contador ainda não foi ligado.</b>
+  <ol>
+  <li>No painel da Vercel, projeto <code>geoquali</code>, abra <b>Storage</b> e crie um banco <b>Upstash Redis</b> no plano gratuito.</li>
+  <li>Conecte esse banco ao projeto. A Vercel cria sozinha as variáveis <code>KV_REST_API_URL</code> e <code>KV_REST_API_TOKEN</code>.</li>
+  <li>Em <b>Settings → Environment Variables</b>, acrescente <code>STATS_KEY</code> com uma senha à sua escolha. É ela que protege este painel.</li>
+  <li>Faça <b>Redeploy</b> e volte aqui.</li>
+  </ol></div>`;
+  return;
+ }
+
+ if(d.serie===undefined){
+  $('chave').hidden=false;
+  alvo.innerHTML=`<div class="aviso">Total de visitas desde o início: <b>${fmt(d.total)}</b>.
+  Para ver o histórico por dia e por página, informe a chave de acesso acima.</div>`;
+  return;
+ }
+
+ $('chave').hidden=false;
+ const hoje=d.serie.length?d.serie[d.serie.length-1]:{visitas:0,pessoas:0};
+ const sete=ultimos(d.serie,7).reduce((s,x)=>s+x.visitas,0);
+ alvo.innerHTML=`
+ <div class="kpis">
+ <div class="kpi"><div class="v">${fmt(d.total)}</div><div class="r">visitas no total</div></div>
+ <div class="kpi"><div class="v">${fmt(d.pessoas)}</div><div class="r">pessoas, soma dos dias</div></div>
+ <div class="kpi"><div class="v">${fmt(sete)}</div><div class="r">visitas em 7 dias</div></div>
+ <div class="kpi"><div class="v">${fmt(hoje.visitas)}</div><div class="r">visitas hoje</div></div>
+ </div>
+
+ <div class="bloco"><h3>Visitas por dia</h3>
+ <p class="leg">Últimos ${Math.min(60,d.serie.length)} dias com registro. Passe o dedo ou o mouse sobre a barra para ver o número.</p>
+ ${grafico(d.serie)}</div>
+
+ <div class="bloco"><h3>Páginas mais abertas</h3>
+ <p class="leg">Onde a turma efetivamente entrou.</p>
+ <table class="dados"><thead><tr><th>Página</th><th style="text-align:right">Visitas</th></tr></thead><tbody>
+ ${d.porPagina.map(p=>`<tr><td>${nomePagina(p.pagina)}</td><td class="n">${fmt(p.visitas)}</td></tr>`).join('')||'<tr><td colspan="2">Sem registros ainda.</td></tr>'}
+ </tbody></table></div>
+
+ <div class="bloco"><h3>Histórico dia a dia</h3>
+ <p class="leg">Série completa desde o início. Guardada por tempo indeterminado, para comparar semestres.</p>
+ <table class="dados"><thead><tr><th>Dia</th><th style="text-align:right">Visitas</th><th style="text-align:right">Pessoas</th></tr></thead><tbody>
+ ${d.serie.slice().reverse().map(x=>`<tr><td>${x.dia.split('-').reverse().join('/')}</td><td class="n">${fmt(x.visitas)}</td><td class="n">${fmt(x.pessoas)}</td></tr>`).join('')||'<tr><td colspan="3">Sem registros ainda.</td></tr>'}
+ </tbody></table></div>`;
+ const inp=$('k'); if(inp) inp.value=chave();
+}
+carregar();
+</script>
+</body>
+</html>
