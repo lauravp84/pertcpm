@@ -1,5 +1,5 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-geo-v1';
+const CACHE = 'pertcpm-v2';
 const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json'];
 
 self.addEventListener('install', e => {

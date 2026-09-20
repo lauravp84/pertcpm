@@ -1,5 +1,5 @@
 /* ============================================================
-   Calculadora PERT/CPM — GEO · T13 · FACC/UFRJ
+   Calculadora PERT/CPM — @LMVN 2026
    Tudo roda no navegador. Sem dependências externas.
    ============================================================ */
 'use strict';
