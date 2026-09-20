@@ -1174,6 +1174,8 @@ function contarVisita() {
       if (!d || !d.configurado || !d.total) return;
       const el = $('#visitas'); if (!el) return;
       el.querySelector('b').textContent = Number(d.total).toLocaleString('pt-BR');
+      const rot = document.getElementById('visitasRot');
+      if (rot) rot.textContent = Number(d.total) === 1 ? ' visita' : ' visitas';
       el.hidden = false;
     })
     .catch(() => { });
