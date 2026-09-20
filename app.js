@@ -999,6 +999,16 @@ function ligar() {
   $('#btnSalvar').onclick = salvarProjeto;
   $('#btnProjetos').onclick = dlgProjetos;
   $('#btnExemplos').onclick = dlgExemplos;
+  $('#btnAgente').onclick = agenteAbrir;
+  $('#agGerar').onclick = agenteGerar;
+  $('#agFechar').onclick = () => $('#dlgAgente').close();
+  $('#agChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-ex-ag]'); if (!b) return;
+    $('#agTexto').value = b.getAttribute('data-ex-ag'); $('#agTexto').focus();
+  });
+  $('#agTexto').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); agenteGerar(); }
+  });
   $('#btnTema').onclick = () => {
     const atual = document.documentElement.getAttribute('data-theme');
     const escuro = atual ? atual === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1013,6 +1023,142 @@ function ligar() {
   });
 }
 function pararAnimacao() { if (animando) { clearInterval(animando); animando = null; } $('#btnPlay').textContent = '▶ Animar'; }
+
+/* ============================================================
+   ASSISTENTE — transforma a descrição do projeto em atividades
+   Com chave de IA configurada no servidor, usa o modelo.
+   Sem chave, cai no modo local: entende listas escritas à mão.
+   ============================================================ */
+const AG_EXEMPLOS = [
+  'Reforma de uma cafeteria de 60 m², do projeto à inauguração',
+  'Lançamento de um aplicativo de delivery, da pesquisa ao lançamento',
+  'Organização de um congresso acadêmico para 300 pessoas',
+  'Implantação de um ERP numa fábrica de móveis'
+];
+let agProposta = null;
+
+/* Modo local: lê linhas como "A · Projeto · 10 · -" ou "Fundação, 8 dias, depois de Projeto". */
+function agenteLocal(texto, modo) {
+  const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 2);
+  if (linhas.length < 2) return null;
+  const atividades = [];
+  const porNome = new Map();
+  linhas.forEach((l, i) => {
+    const limpa = l.replace(/^[-*•\d]+[).\s]*/, '').trim();
+    if (!limpa) return;
+    const mDur = limpa.match(/(\d+(?:[.,]\d+)?)\s*(dias?|semanas?|meses|m[êe]s|d|s|m)\b/i);
+    const dur = mDur ? num(mDur[1]) : 1;
+    const mDep = limpa.match(/\b(?:depois de|ap[óo]s|precisa de|depende de)\s+(.+)$/i);
+    let nome = limpa;
+    if (mDep) nome = limpa.slice(0, mDep.index);
+    if (mDur) nome = nome.replace(mDur[0], '');
+    nome = nome.replace(/\s*[,;·|]+\s*/g, ' ').replace(/[\s,;·|–-]+$/, '').replace(/\s{2,}/g, ' ').trim().slice(0, 60) || ('Atividade ' + (i + 1));
+    const id = proxId(atividades);
+    const a = novoAtv(id, nome);
+    if (modo === 'pert') { a.o = Math.max(0, r2(dur * 0.8)); a.m = dur; a.p = r2(dur * 1.4); }
+    else a.d = dur;
+    if (mDep) {
+      mDep[1].split(/,| e |;/).forEach(t => {
+        const chave = t.trim().toLowerCase().slice(0, 60);
+        for (const [n, cod] of porNome) { if (chave && (n.indexOf(chave) >= 0 || chave.indexOf(n) >= 0)) { if (a.preds.indexOf(cod) < 0) a.preds.push(cod); break; } }
+      });
+    } else if (atividades.length) {
+      a.preds = [atividades[atividades.length - 1].id]; // sequência na ordem escrita
+    }
+    porNome.set(nome.toLowerCase(), id);
+    atividades.push(a);
+  });
+  return atividades.length >= 2 ? { atividades, local: true } : null;
+}
+
+function agenteAbrir() {
+  $('#agChips').innerHTML = AG_EXEMPLOS.map(e => '<button class="btn sm" data-ex-ag="' + esc(e) + '">' + esc(e) + '</button>').join('');
+  $('#agModo').value = state.modo;
+  $('#agUnidade').value = state.unidade;
+  $('#agSaida').innerHTML = '';
+  $('#agAviso').textContent = '';
+  agProposta = null;
+  $('#dlgAgente').showModal();
+  setTimeout(() => $('#agTexto').focus(), 60);
+}
+
+async function agenteGerar() {
+  const texto = $('#agTexto').value.trim();
+  const modo = $('#agModo').value;
+  if (texto.length < 10) { $('#agSaida').innerHTML = '<div class="alert warn">Escreva um pouco mais sobre o projeto.</div>'; return; }
+  const btn = $('#agGerar'); btn.disabled = true; btn.textContent = 'Pensando…';
+  $('#agSaida').innerHTML = '<div class="alert info">Montando a rede do projeto…</div>';
+  let dados = null, viaIA = false, motivo = '';
+  try {
+    const r = await fetch('/api/agente', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ texto, modo })
+    });
+    const j = await r.json();
+    if (j && j.ok) { dados = j; viaIA = true; } else motivo = (j && j.motivo) || 'falha';
+  } catch (e) { motivo = 'rede'; }
+
+  if (!dados) {
+    const local = agenteLocal(texto, modo);
+    if (local) dados = { atividades: local.atividades, unidade: $('#agUnidade').value, observacoes: '' };
+  }
+  btn.disabled = false; btn.textContent = 'Gerar atividades';
+
+  if (!dados) {
+    const recado = {
+      sem_chave: 'A assistente com IA ainda não está ligada neste site. Enquanto isso, escreva uma atividade por linha — por exemplo: <span class="num">Fundação, 8 dias, depois de Projeto</span> — que eu monto a rede a partir da sua lista.',
+      texto_curto: 'Descreva o projeto com um pouco mais de detalhe.',
+      resposta_invalida: 'A resposta veio fora do formato esperado. Tente reescrever a descrição.',
+      falha_api: 'Não consegui falar com o modelo agora. Tente de novo em instantes.',
+      rede: 'Sem conexão com o servidor. A calculadora continua funcionando offline.'
+    }[motivo] || 'Não consegui montar a lista desta vez.';
+    $('#agSaida').innerHTML = '<div class="alert warn">' + recado + '</div>';
+    return;
+  }
+
+  agProposta = { modo, unidade: dados.unidade || $('#agUnidade').value, atividades: dados.atividades };
+  let h = '<div class="alert ' + (viaIA ? 'info' : 'warn') + '">' +
+    (viaIA ? '<b>' + dados.atividades.length + ' atividades propostas</b>' + esc(dados.observacoes || '')
+      : '<b>Montado a partir da sua lista (sem IA)</b>Confira as precedências: assumi a ordem em que você escreveu quando não estava explícito.') +
+    '</div>';
+  h += '<div class="tblwrap"><table class="grid"><thead><tr><th>Cód.</th><th>Atividade</th>' +
+    (modo === 'pert' ? '<th>o</th><th>m</th><th>p</th>' : '<th>Duração</th>') + '<th>Predecessoras</th></tr></thead><tbody>';
+  dados.atividades.forEach(a => {
+    h += '<tr><td class="n"><b>' + esc(a.id) + '</b></td><td>' + esc(a.nome) + '</td>';
+    h += modo === 'pert'
+      ? '<td class="n">' + fmt(num(a.o)) + '</td><td class="n">' + fmt(num(a.m)) + '</td><td class="n">' + fmt(num(a.p)) + '</td>'
+      : '<td class="n">' + fmt(num(a.d)) + '</td>';
+    h += '<td class="n">' + (a.preds && a.preds.length ? esc(a.preds.join(', ')) : '—') + '</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+    '<button class="btn primary sm" id="agAplicar">Aplicar na calculadora</button>' +
+    '<button class="btn sm" id="agAdicionar">Acrescentar às atuais</button></div>';
+  $('#agSaida').innerHTML = h;
+  $('#agAplicar').onclick = () => agenteAplicar(true);
+  $('#agAdicionar').onclick = () => agenteAplicar(false);
+}
+
+function agenteAplicar(substituir) {
+  if (!agProposta) return;
+  const novas = agProposta.atividades.map(a => {
+    const o = novoAtv(a.id, a.nome);
+    if (agProposta.modo === 'pert') { o.o = a.o; o.m = a.m; o.p = a.p; o.d = a.m; }
+    else { o.d = a.d; o.o = a.d; o.m = a.d; o.p = a.d; }
+    o.preds = (a.preds || []).slice();
+    return o;
+  });
+  state.modo = agProposta.modo;
+  state.unidade = agProposta.unidade || state.unidade;
+  state.acts = substituir ? novas : state.acts.concat(novas);
+  $('#unidade').value = state.unidade;
+  $('#segModo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === state.modo));
+  renderDados(); renderCrashTabela(); recalcular();
+  $('#dlgAgente').close();
+  toast(novas.length + ' atividades ' + (substituir ? 'aplicadas' : 'acrescentadas') + '. Confira antes de usar.');
+  $$('#tabs .tab').forEach(t => t.classList.toggle('on', t.dataset.p === 'dados'));
+  $$('.panel').forEach(p => p.classList.toggle('on', p.id === 'p-dados'));
+}
 
 /* ============================================================
    CONTADOR DE VISITAS

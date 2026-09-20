@@ -189,6 +189,7 @@ textarea.ta{width:100%;min-height:150px;border:1px solid var(--line);border-radi
     <div class="brand"><span class="mark">CPM</span><span>PERT/CPM<small>@LMVN 2026</small></span></div>
     <input class="projname" id="projName" value="Novo projeto" aria-label="Nome do projeto">
     <span class="spacer"></span>
+    <button class="btn sm primary" id="btnAgente">✦ Assistente</button>
     <button class="btn sm" id="btnExemplos">Exemplos</button>
     <button class="btn sm" id="btnProjetos">Meus projetos</button>
     <button class="btn sm" id="btnSalvar">Salvar</button>
@@ -411,6 +412,25 @@ textarea.ta{width:100%;min-height:150px;border:1px solid var(--line);border-radi
   <span id="visitas" hidden><b class="num"></b> visitas</span>
   <span>Roda no navegador, offline. Os dados ficam no seu aparelho.</span>
 </footer>
+
+<dialog id="dlgAgente">
+  <div class="dlg-h">✦ Assistente do projeto</div>
+  <div class="dlg-b">
+    <p class="hint" style="margin-top:0">Descreva o projeto em português corrente — o que precisa ser feito, prazos que você já conhece, o que depende do quê. A assistente devolve a lista de atividades com durações e precedências para você conferir antes de aplicar.</p>
+    <div id="agChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <textarea class="ta" id="agTexto" style="min-height:120px;font-family:var(--font-body);font-size:14px" placeholder="Ex.: Reforma de uma cafeteria de 60 m². Preciso de projeto, licença na prefeitura, demolição, elétrica e hidráulica, gesso, pintura, mobiliário sob medida e treinamento da equipe. A licença demora cerca de 3 semanas e o mobiliário é o que mais atrasa."></textarea>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label>Modo</label><select id="agModo"><option value="cpm">CPM · duração única</option><option value="pert">PERT · 3 estimativas</option></select></div>
+      <div class="field"><label>Unidade</label><select id="agUnidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
+    </div>
+    <div id="agSaida" style="margin-top:14px"></div>
+  </div>
+  <div class="dlg-f">
+    <span class="hint" id="agAviso" style="margin-right:auto"></span>
+    <button class="btn sm" id="agFechar">Fechar</button>
+    <button class="btn sm primary" id="agGerar">Gerar atividades</button>
+  </div>
+</dialog>
 
 <dialog id="dlg">
   <div class="dlg-h" id="dlgTitulo">Título</div>
