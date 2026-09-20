@@ -970,6 +970,47 @@ function agenteAplicar(substituir) {
 }
 
 /* ============================================================
+   CONTATO
+   O link mailto: só abre se o aparelho tiver um programa de e-mail
+   configurado — em muito computador não tem, e o clique não faz nada.
+   Por isso o botão abre um modal com o endereço, cópia em um clique
+   e atalhos para o webmail.
+   ============================================================ */
+const EMAIL_CONTATO = 'laura.valencia@facc.ufrj.br';
+const ASSUNTO_CONTATO = 'Calculadora PERT/CPM';
+
+function dlgContato() {
+  const assunto = encodeURIComponent(ASSUNTO_CONTATO);
+  const gmail = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(EMAIL_CONTATO) + '&su=' + assunto;
+  const outlook = 'https://outlook.live.com/mail/0/deeplink/compose?to=' + encodeURIComponent(EMAIL_CONTATO) + '&subject=' + assunto;
+  abrirDlg('Entre em contato',
+    '<p style="margin-top:0">Escreva para:</p>' +
+    '<div class="item"><div class="t"><b class="mono" id="ctEmail">' + esc(EMAIL_CONTATO) + '</b>' +
+    '<span>Dúvida sobre o cálculo, sugestão ou erro encontrado.</span></div>' +
+    '<button class="bt mini" id="ctCopiar">Copiar</button></div>' +
+    '<p class="hint">Ou abra direto no seu webmail:</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<a class="bt mini" href="' + gmail + '" target="_blank" rel="noopener" style="text-decoration:none">Gmail</a>' +
+    '<a class="bt mini" href="' + outlook + '" target="_blank" rel="noopener" style="text-decoration:none">Outlook</a>' +
+    '<a class="bt mini" href="mailto:' + EMAIL_CONTATO + '?subject=' + assunto + '" style="text-decoration:none">Programa de e-mail do computador</a>' +
+    '</div>',
+    [['Fechar', () => $('#dlg').close(), true]]);
+  const bt = $('#ctCopiar');
+  if (bt) bt.onclick = () => {
+    const ok = () => { bt.textContent = 'Copiado'; setTimeout(() => { bt.textContent = 'Copiar'; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(EMAIL_CONTATO).then(ok).catch(() => selecionaEmail());
+    } else selecionaEmail();
+  };
+}
+function selecionaEmail() {
+  const el = $('#ctEmail'); if (!el) return;
+  const faixa = document.createRange(); faixa.selectNodeContents(el);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(faixa);
+  toast('Selecionei o endereço — use Ctrl+C para copiar.');
+}
+
+/* ============================================================
    CONTADOR DE VISITAS
    ============================================================ */
 function contarVisita() {
@@ -1123,6 +1164,7 @@ function ligar() {
   $('#btnSalvar').onclick = dlgSalvar;
   $('#btnProjetos').onclick = dlgProjetos;
 
+  $('#btnContato').onclick = dlgContato;
   $('#btnAgente').onclick = agenteAbrir;
   $('#agGerar').onclick = agenteGerar;
   $('#agFechar').onclick = () => $('#dlgAgente').close();

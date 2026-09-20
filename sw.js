@@ -1,5 +1,5 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-v6';
+const CACHE = 'pertcpm-v7';
 const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json', './fontes/fontes.css'];
 
 self.addEventListener('install', e => {
