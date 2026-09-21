@@ -1,6 +1,18 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-v7';
-const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json', './fontes/fontes.css'];
+const CACHE = 'pertcpm-v8';
+/* As fontes do subconjunto latino entram na instalacao: sem elas o app abre
+   offline com a fonte do sistema e perde a identidade. O latin-ext entra sob demanda. */
+const ARQUIVOS = ['./', './index.html', './app.js', './manifest.json', './fontes/fontes.css',
+  './fontes/IBMPlexMono-400-latin.woff2',
+  './fontes/IBMPlexMono-500-latin.woff2',
+  './fontes/IBMPlexMono-600-latin.woff2',
+  './fontes/IBMPlexSans-400-latin.woff2',
+  './fontes/IBMPlexSans-500-latin.woff2',
+  './fontes/IBMPlexSans-600-latin.woff2',
+  './fontes/IBMPlexSans-700-latin.woff2',
+  './fontes/Newsreader-400-latin.woff2',
+  './fontes/Newsreader-500-latin.woff2',
+  './fontes/Newsreader-600-latin.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
