@@ -13,6 +13,62 @@ const MODELO_ANTHROPIC = process.env.MODELO_AGENTE || 'claude-sonnet-5';
 const MODELO_OPENAI = process.env.MODELO_AGENTE_OPENAI || 'gpt-4o-mini';
 const LIMITE_TEXTO = 4000;
 
+/* Limites de uso. O endpoint é público e cada chamada gasta a chave de quem hospeda,
+   então sem teto qualquer pessoa poderia esgotar o crédito. Três camadas, ajustáveis
+   por variável de ambiente:
+   - por navegador (identificador anônimo): protege contra um uso desproporcional;
+   - por rede (IP): bem mais alto, para caber uma turma inteira atrás do mesmo roteador;
+   - geral do dia: o teto de gasto, valha o que valer. */
+const URL_KV = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+const TOK_KV = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const LIM_NAVEGADOR_HORA = Number(process.env.AGENTE_LIMITE_NAVEGADOR_HORA) || 10;
+const LIM_REDE_HORA = Number(process.env.AGENTE_LIMITE_REDE_HORA) || 150;
+const LIM_GERAL_DIA = Number(process.env.AGENTE_LIMITE_DIA) || 250;
+
+async function redis(comandos) {
+  const r = await fetch(URL_KV + '/pipeline', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + TOK_KV, 'Content-Type': 'application/json' },
+    body: JSON.stringify(comandos),
+  });
+  if (!r.ok) throw new Error('kv ' + r.status);
+  return r.json();
+}
+
+async function hashCurto(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* Devolve null se pode usar, ou o motivo da recusa. Falha fechada: sem banco (ou com o
+   banco fora do ar) não há como contar, então a IA não é chamada — a página cai no modo
+   por lista. Melhor isso do que deixar o gasto sem controle. */
+async function verificaLimite(req) {
+  if (!URL_KV || !TOK_KV) return 'indisponivel';
+  try {
+    const agora = new Date();
+    const hora = agora.toISOString().slice(0, 13), dia = agora.toISOString().slice(0, 10);
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    let cli = String(req.headers['x-cliente'] || '');
+    if (!/^[a-f0-9]{8,40}$/.test(cli)) cli = 'sem-id:' + ip;           // sem identificador, divide com a rede
+    const kNav = 'pertcpm:ag:nav:' + hora + ':' + await hashCurto(cli);
+    const kRede = 'pertcpm:ag:rede:' + hora + ':' + await hashCurto(ip);
+    const kDia = 'pertcpm:ag:dia:' + dia;
+    const r = await redis([
+      ['INCR', kNav], ['EXPIRE', kNav, 7200],
+      ['INCR', kRede], ['EXPIRE', kRede, 7200],
+    ]);
+    const nav = Number(r[0].result), rede = Number(r[2].result);
+    if (nav > LIM_NAVEGADOR_HORA || rede > LIM_REDE_HORA) return 'limite';
+    /* O total do dia só conta quem passou pelas duas camadas acima. Se contasse também os
+       pedidos recusados, bastaria alguém insistir de um navegador só para esgotar o teto e
+       travar a assistente para todo mundo. */
+    const g = await redis([['INCR', kDia], ['EXPIRE', kDia, 172800]]);
+    if (Number(g[0].result) > LIM_GERAL_DIA) return 'limite_geral';
+    return null;
+  } catch (e) { return 'indisponivel'; }
+}
+
 const INSTRUCOES = `Você ajuda estudantes e profissionais a montar a rede de um projeto para análise PERT/CPM.
 
 A partir da descrição do projeto, devolva as atividades necessárias com duração e precedências.
@@ -125,6 +181,9 @@ module.exports = async (req, res) => {
   const texto = String((corpo && corpo.texto) || '').trim().slice(0, LIMITE_TEXTO);
   const modo = (corpo && corpo.modo) === 'pert' ? 'pert' : 'cpm';
   if (texto.length < 10) { res.status(200).json({ ok: false, motivo: 'texto_curto' }); return; }
+
+  const recusa = await verificaLimite(req);
+  if (recusa) { res.status(200).json({ ok: false, motivo: recusa }); return; }
 
   try {
     const bruto = CHAVE_ANTHROPIC ? await chamaAnthropic(texto, modo) : await chamaOpenAI(texto, modo);

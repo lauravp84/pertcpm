@@ -25,8 +25,11 @@ function diaSaoPaulo(d = new Date()) {
 function limpaCaminho(p) {
   if (!p || typeof p !== 'string') return '/';
   p = p.split('?')[0].split('#')[0].slice(0, 80);
-  if (!/^\/[A-Za-z0-9\/_.-]*$/.test(p)) return '/outro';
-  return p;
+  /* A calculadora tem uma página só (e o painel). Qualquer outro caminho vira '/outro':
+     assim ninguém cria chaves sem fim no banco nem infla a lista de páginas. */
+  if (p === '/' || p === '/index.html') return '/';
+  if (p === '/painel' || p === '/painel.html') return '/painel';
+  return '/outro';
 }
 
 async function impressaoDigital(req, dia) {

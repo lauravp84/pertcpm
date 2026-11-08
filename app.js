@@ -59,7 +59,7 @@ function calcular(durOverride) {
     if (mapa.has(id)) erros.push('Código repetido: <b>' + esc(id) + '</b>.');
     else mapa.set(id, a);
   });
-  if (!acts.length) return { vazio: true, erros: [], avisos: [], acts: [], caminhos: [], criticas: [], critSeq: [], dur: 0 };
+  if (!acts.length) return { vazio: true, erros: [], avisos: [], acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0 };
 
   const N = new Map();
   for (const [id, a] of mapa) {
@@ -88,7 +88,7 @@ function calcular(durOverride) {
   if (ordem.length < N.size) {
     const presos = Array.from(N.keys()).filter(id => ordem.indexOf(id) < 0);
     erros.push('Há dependência circular entre: <b>' + presos.map(esc).join(', ') + '</b>. A rede precisa fluir só para a frente.');
-    return { erros, avisos, acts: [], caminhos: [], criticas: [], critSeq: [], dur: 0, ciclo: true };
+    return { erros, avisos, acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0, ciclo: true };
   }
 
   ordem.forEach(id => {
@@ -114,7 +114,43 @@ function calcular(durOverride) {
   if (finais.length > 1) avisos.push('Há ' + finais.length + ' atividades sem sucessora (' + finais.join(', ') + '). Todas encerram o projeto — se não for isso, ligue-as a uma atividade final.');
   if (iniciais.length > 1) avisos.push('Há ' + iniciais.length + ' atividades sem predecessora (' + iniciais.join(', ') + '). Todas começam no instante zero.');
 
-  /* caminhos, com teto */
+  /* Subgrafo crítico: só as atividades sem folga e as ligações em que uma começa
+     exatamente quando a outra termina. É por ele — e não pela lista geral de caminhos,
+     que tem teto — que se acha o caminho crítico, o sigma e a compressão. Toda atividade
+     crítica que não é a última tem uma sucessora crítica começando no seu EF, então a
+     busca sempre chega ao fim. */
+  const critSucc = id => N.get(id).succs.filter(s => N.get(s).crit && Math.abs(N.get(id).EF - N.get(s).ES) < EPS);
+  const caminhosCriticos = []; let critEstourou = false;
+  const dfsC = (id, acum, soma, vari) => {
+    if (caminhosCriticos.length >= TETO_CAMINHOS) { critEstourou = true; return; }
+    const n = N.get(id); acum.push(id); soma += n.dur; vari += n.varia;
+    if (!n.succs.length) caminhosCriticos.push({ ids: acum.slice(), dur: soma, varia: vari, crit: true });
+    else critSucc(id).forEach(s => dfsC(s, acum, soma, vari));
+    acum.pop();
+  };
+  iniciais.filter(id => N.get(id).crit).forEach(id => dfsC(id, [], 0, 0));
+
+  /* Caminho crítico de maior variância (é dele que sai o sigma), por programação
+     dinâmica: exato mesmo que existam milhares de caminhos críticos. */
+  let critVar = 0, critSeq = [];
+  {
+    const melhor = new Map(), veio = new Map();
+    ordem.forEach(id => {
+      const n = N.get(id); if (!n.crit) return;
+      let b = 0, de = null;
+      n.preds.forEach(p => {
+        const pn = N.get(p);
+        if (pn.crit && Math.abs(pn.EF - n.ES) < EPS && melhor.has(p) && (de === null || melhor.get(p) > b)) { b = melhor.get(p); de = p; }
+      });
+      melhor.set(id, b + n.varia); veio.set(id, de);
+    });
+    let ult = null;
+    melhor.forEach((v, id) => { if (!N.get(id).succs.length && (ult === null || v > melhor.get(ult))) ult = id; });
+    if (ult !== null) { critVar = melhor.get(ult); for (let cur = ult; cur; cur = veio.get(cur)) critSeq.unshift(cur); }
+  }
+
+  /* Lista geral de caminhos (para exibir), com teto. Os críticos entram sempre,
+     mesmo que o teto tenha cortado a busca antes de chegar neles. */
   const caminhos = []; let estourou = false;
   const dfs = (id, acum, soma, vari) => {
     if (caminhos.length >= TETO_CAMINHOS) { estourou = true; return; }
@@ -124,21 +160,15 @@ function calcular(durOverride) {
     acum.pop();
   };
   iniciais.forEach(id => dfs(id, [], 0, 0));
+  const jaTem = new Set(caminhos.map(p => p.ids.join('>')));
+  caminhosCriticos.forEach(p => { if (!jaTem.has(p.ids.join('>'))) caminhos.push(p); });
   caminhos.sort((a, b) => b.dur - a.dur);
-  if (estourou) avisos.push('A rede tem mais de ' + TETO_CAMINHOS + ' caminhos; a lista mostra apenas os primeiros encontrados.');
-
-  /* caminho crítico de maior variância — é dele que sai o sigma */
-  let critVar = 0, critSeq = [];
-  const criticos = caminhos.filter(c => c.crit);
-  if (criticos.length) {
-    let melhor = criticos[0];
-    criticos.forEach(c => { if (c.varia > melhor.varia) melhor = c; });
-    critVar = melhor.varia; critSeq = melhor.ids.slice();
-  }
+  if (estourou) avisos.push('A rede tem mais de ' + TETO_CAMINHOS + ' caminhos; a lista mostra uma amostra deles. Os caminhos críticos aparecem sempre.');
+  if (critEstourou) avisos.push('Há mais de ' + TETO_CAMINHOS + ' caminhos críticos; mostrando ' + TETO_CAMINHOS + '.');
 
   const lista = ordem.map(id => N.get(id));
   return {
-    erros, avisos, dur, N, ordem, acts: lista, caminhos, iniciais, finais,
+    erros, avisos, dur, N, ordem, acts: lista, caminhos, caminhosCriticos, iniciais, finais,
     criticas: lista.filter(n => n.crit), critVar, critSeq, sigma: Math.sqrt(critVar)
   };
 }
@@ -171,7 +201,13 @@ function dataDe(instante) {
   if (isNaN(base.getTime())) return null;
   const k = Math.round(instante);
   const d = new Date(base.getTime());
-  if (state.unidade === 'm') { d.setMonth(d.getMonth() + k); return d; }
+  if (state.unidade === 'm') {
+    /* setMonth sozinho transborda: 31/01 + 1 mês viraria 03/03. Prende ao último dia do mês. */
+    const dia = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + k);
+    d.setDate(Math.min(dia, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    return d;
+  }
   const dias = state.unidade === 's' ? k * 7 : k;
   if (!Number(state.uteis) || state.unidade === 's') { d.setDate(d.getDate() + dias); return d; }
   let falta = dias, guarda = 0;
@@ -544,7 +580,7 @@ function rodarCrash() {
 
   for (let it = 1; it < TETO_PASSOS; it++) {
     if (!isNaN(alvo) && s.dur <= alvo + EPS) break;
-    const cps = s.caminhos.filter(p => p.crit);
+    const cps = s.caminhosCriticos;
     if (!cps.length) break;
     const conjuntos = cps.map(p => p.ids.filter(id => dur.get(id) - dmin.get(id) > EPS && isFinite(custo.get(id))));
     if (conjuntos.some(x => !x.length)) break;
@@ -857,6 +893,20 @@ const AG_EXEMPLOS = [
 ];
 let agProposta = null;
 
+/* Identificador aleatório e anônimo, só para a assistente dividir o limite de uso entre
+   as pessoas de uma mesma rede (laboratório, sala de aula). Não tem relação com ninguém. */
+function idCliente() {
+  try {
+    let id = localStorage.getItem('pertcpm.cliente');
+    if (!id) {
+      const v = new Uint8Array(12); crypto.getRandomValues(v);
+      id = Array.from(v).map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('pertcpm.cliente', id);
+    }
+    return id;
+  } catch (e) { return ''; }
+}
+
 function agenteLocal(texto, modo) {
   const linhas = String(texto).split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 2);
   if (linhas.length < 2) return null;
@@ -906,7 +956,7 @@ async function agenteGerar() {
   $('#agSaida').innerHTML = '<div class="nota">Montando a rede do projeto…</div>';
   let dados = null, viaIA = false, motivo = '';
   try {
-    const r = await fetch('/api/agente', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ texto: texto, modo: modo }) });
+    const r = await fetch('/api/agente', { method: 'POST', headers: { 'content-type': 'application/json', 'x-cliente': idCliente() }, body: JSON.stringify({ texto: texto, modo: modo }) });
     const j = await r.json();
     if (j && j.ok) { dados = j; viaIA = true; } else motivo = (j && j.motivo) || 'falha';
   } catch (e) { motivo = 'rede'; }
@@ -922,6 +972,9 @@ async function agenteGerar() {
       texto_curto: 'Descreva o projeto com um pouco mais de detalhe.',
       resposta_invalida: 'A resposta veio fora do formato esperado. Tente reescrever a descrição.',
       falha_api: 'Não consegui falar com o modelo agora. Tente de novo em instantes.',
+      limite: 'Você já usou a assistente várias vezes nesta hora. Tente de novo mais tarde — enquanto isso, escrever uma atividade por linha continua funcionando.',
+      indisponivel: 'A assistente com IA está indisponível no momento. Enquanto isso, escrever uma atividade por linha continua funcionando.',
+      limite_geral: 'A assistente atingiu o limite de uso de hoje. Tente amanhã — enquanto isso, escrever uma atividade por linha continua funcionando.',
       rede: 'Sem conexão com o servidor. A calculadora continua funcionando offline.'
     }[motivo] || 'Não consegui montar a lista desta vez.';
     $('#agSaida').innerHTML = '<div class="faixa-erro">' + recado + '</div>';
@@ -1055,9 +1108,49 @@ function recalcular() {
   gravarEstado();
 }
 
+/* Ao trocar de modo, leva as durações junto. CPM→PERT parte de o = m = p = duração
+   (onde as três estimativas ainda estão no padrão); PERT→CPM usa o te. Antes, trocar
+   para PERT zerava tudo para 1, porque as estimativas começam em 1. */
+function converteModo(novo) {
+  if (novo === state.modo) return;
+  state.acts.forEach(a => {
+    const padrao = num(a.o) === 1 && num(a.m) === 1 && num(a.p) === 1;
+    if (novo === 'pert') {
+      if (padrao && num(a.d) !== 1) { a.o = a.d; a.m = a.d; a.p = a.d; }
+    } else if (!(padrao && num(a.d) !== 1)) {
+      a.d = Math.round(((num(a.o) + 4 * num(a.m) + num(a.p)) / 6) * 1000) / 1000;
+    }
+  });
+  state.modo = novo;
+}
+
+/* Aceita qualquer JSON — do armazenamento, de um projeto salvo ou de uma importação — e
+   devolve um estado que o resto do app consegue usar. Campo fora do formato vira o padrão.
+   Sem isso, um arquivo importado com "preds" em texto derrubava o app, e como o estado era
+   gravado ao sair, ele ficava quebrado a cada abertura seguinte. */
+function normalizaEstado(novo) {
+  const o = (novo && typeof novo === 'object' && !Array.isArray(novo)) ? novo : {};
+  const st = Object.assign(estadoVazio(), o);
+  st.modo = st.modo === 'pert' ? 'pert' : 'cpm';
+  st.unidade = ['d', 's', 'm'].indexOf(st.unidade) >= 0 ? st.unidade : 'd';
+  st.uteis = Number(st.uteis) === 1 ? 1 : 0;
+  st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
+  st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
+  ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
+  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'crash', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, 500).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
+    const x = Object.assign(novoAtv('A'), a);
+    x.id = String(x.id == null ? '' : x.id).trim().toUpperCase().slice(0, 6);
+    x.nome = String(x.nome == null ? '' : x.nome).slice(0, 120);
+    x.preds = (Array.isArray(x.preds) ? x.preds : String(x.preds == null ? '' : x.preds).split(/[,;\s]+/))
+      .map(p => String(p).trim().toUpperCase()).filter(Boolean);
+    return x;
+  });
+  return st;
+}
+
 function carregar(novo) {
-  state = Object.assign(estadoVazio(), novo || {});
-  state.acts = (state.acts || []).map(a => Object.assign(novoAtv('A'), a));
+  state = normalizaEstado(novo);
   $('#dtInicio').value = state.inicio || '';
   $('#unidade').value = state.unidade || 'd';
   $('#uteis').value = String(state.uteis || 0);
@@ -1112,7 +1205,7 @@ function ligar() {
 
   $('#segModo').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    state.modo = b.dataset.m;
+    converteModo(b.dataset.m);
     $$('#segModo button').forEach(x => x.classList.toggle('on', x === b));
     renderDados(); renderCrashTabela(); recalcular();
   });
@@ -1185,7 +1278,15 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
 /* ---------- arranque ---------- */
 (function () {
   ligar();
-  carregar(lerEstado() || estadoVazio());
+  const salvo = lerEstado();
+  try { carregar(salvo || estadoVazio()); }
+  catch (e) {
+    /* Rede de segurança: se mesmo assim o estado salvo não servir, guarda uma cópia
+       e recomeça limpo, em vez de deixar o app quebrado a cada abertura. */
+    try { localStorage.setItem(CHAVE_ESTADO + '.quebrado', JSON.stringify(salvo)); localStorage.removeItem(CHAVE_ESTADO); } catch (_) { }
+    carregar(estadoVazio());
+    toast('Não consegui abrir o projeto anterior; comecei um novo.');
+  }
   addEventListener('beforeunload', gravarEstado);
   contarVisita();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
