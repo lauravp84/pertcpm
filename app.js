@@ -278,7 +278,7 @@ function renderDados() {
   h += pert
     ? '<th class="w-num">o</th><th class="w-num">m</th><th class="w-num">p</th><th class="w-num">te</th>'
     : '<th class="w-dur">Duração</th>';
-  h += '<th>Predecessoras</th><th class="w-x noprint"></th></tr></thead><tbody>';
+  h += '<th title="Atividades que precisam terminar antes desta. Com mais de uma, separe por vírgula: A, B">Predecessoras</th><th class="w-x noprint"></th></tr></thead><tbody>';
   state.acts.forEach((a, i) => {
     h += '<tr data-i="' + i + '">';
     h += '<td><input class="cod" data-f="id" value="' + esc(a.id) + '" maxlength="6" aria-label="Código"></td>';
@@ -291,7 +291,7 @@ function renderDados() {
     } else {
       h += '<td><input data-f="d" inputmode="decimal" value="' + esc(a.d) + '" aria-label="Duração"></td>';
     }
-    h += '<td><input class="pred" data-f="preds" value="' + esc((a.preds || []).join(', ')) + '" placeholder="—" aria-label="Predecessoras"></td>';
+    h += '<td><input class="pred" data-f="preds" value="' + esc((a.preds || []).join(', ')) + '" placeholder="ex.: A, B" title="Atividades que precisam terminar antes desta, separadas por vírgula. Em branco = esta atividade começa o projeto." aria-label="Predecessoras"></td>';
     h += '<td class="noprint"><button class="remover" data-del="' + i + '" title="Remover" aria-label="Remover">×</button></td></tr>';
   });
   t.innerHTML = h + '</tbody>';
