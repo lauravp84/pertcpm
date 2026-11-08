@@ -34,6 +34,7 @@ function estadoVazio() {
   return {
     nome: 'Novo projeto', modo: 'cpm', inicio: '', unidade: 'd', uteis: 0,
     custoInd: '', custoDir: '', prazoAlvo: '',
+    notacao: 'disc',
     aba: 'dados', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
     acts: [novoAtv('A'), novoAtv('B'), novoAtv('C')]
   };
@@ -46,6 +47,23 @@ function proxId(acts) {
 }
 const UNI = { d: ['dia', 'dias'], s: ['semana', 'semanas'], m: ['mês', 'meses'] };
 const uni = n => (Math.abs(n) === 1 ? UNI[state.unidade][0] : UNI[state.unidade][1]);
+
+/* Notação das datas. O padrão é o da disciplina (PDI/PDT/UDI/UDT, como no deck de aula);
+   a internacional (ES/EF/LS/LF) fica à escolha. Também evita a colisão de "ES", que na
+   disciplina é estoque de segurança (MRP). O motor continua usando ES/EF/LS/LF por dentro. */
+const SIGLAS = { disc: { ES: 'PDI', EF: 'PDT', LS: 'UDI', LF: 'UDT' }, intl: { ES: 'ES', EF: 'EF', LS: 'LS', LF: 'LF' } };
+const NOMES = { disc: { ES: 'primeira data de início', EF: 'primeira data de término', LS: 'última data de início', LF: 'última data de término' }, intl: { ES: 'início mais cedo', EF: 'término mais cedo', LS: 'início mais tarde', LF: 'término mais tarde' } };
+const NOMES_ART = { disc: { ES: 'a primeira data de início', EF: 'a primeira data de término', LS: 'a última data de início', LF: 'a última data de término' }, intl: { ES: 'o início mais cedo', EF: 'o término mais cedo', LS: 'o início mais tarde', LF: 'o término mais tarde' } };
+const sg = k => (SIGLAS[state && state.notacao] || SIGLAS.disc)[k];
+const sgNome = k => (NOMES[state && state.notacao] || NOMES.disc)[k];
+const sgArt = k => (NOMES_ART[state && state.notacao] || NOMES_ART.disc)[k];
+function aplicaNotacao() {
+  $$('.sg').forEach(e => { e.textContent = sg(e.dataset.s); });
+  $$('.sgn').forEach(e => { e.textContent = sgNome(e.dataset.s); });
+  $$('.sga').forEach(e => { e.textContent = sgArt(e.dataset.s); });
+  const l = $('#legendaRes');
+  if (l) l.textContent = ['ES', 'EF', 'LS', 'LF'].map(k => sg(k) + ' = ' + sgNome(k)).join(' · ') + ' · FT = folga total · FL = folga livre.';
+}
 
 /* ============================================================
    MOTOR DE CÁLCULO
@@ -62,28 +80,32 @@ function varDe(a) {
 function calcular(durOverride) {
   const acts = state.acts.filter(a => String(a.id).trim() !== '');
   const erros = [], avisos = [];
+  /* Linha com dados mas sem código não entra no cálculo: antes sumia em silêncio e o resumo mudava sem explicação. */
+  const linhaTemDados = x => String(x.nome || '').trim() !== '' || (x.preds || []).length > 0 ||
+    (state.modo === 'pert' ? !(num(x.o) === 1 && num(x.m) === 1 && num(x.p) === 1) : (String(x.d).trim() !== '' && num(x.d) !== 1));
+  state.acts.forEach((x, i) => { if (String(x.id).trim() === '' && linhaTemDados(x)) erros.push('A linha ' + (i + 1) + ' tem dados mas não tem código, então não entra no cálculo. Dê um código a ela (A, B, C…) ou apague a linha.'); });
   const mapa = new Map();
   acts.forEach(a => {
     const id = String(a.id).trim().toUpperCase();
     if (!/^[A-Z0-9_-]+$/.test(id)) erros.push('Código <b>' + esc(id) + '</b> inválido: use só letras, números, - ou _ (sem espaço, vírgula ou ponto e vírgula).');
-    if (mapa.has(id)) erros.push('Código repetido: <b>' + esc(id) + '</b>.');
+    if (mapa.has(id)) erros.push('Código repetido: <b>' + esc(id) + '</b>. Cada atividade precisa de um código único: troque um dos dois.');
     else mapa.set(id, a);
   });
-  if (!acts.length) return { vazio: true, erros: [], avisos: [], acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0 };
+  if (!acts.length) return { vazio: true, erros, avisos, acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0 };
 
   const N = new Map();
   for (const [id, a] of mapa) {
     const preds = (a.preds || []).map(p => String(p).trim().toUpperCase()).filter(Boolean);
     const ok = [];
     preds.forEach(p => {
-      if (p === id) erros.push('<b>' + esc(id) + '</b> não pode ser predecessora de si mesma.');
-      else if (!mapa.has(p)) erros.push('<b>' + esc(id) + '</b> depende de <b>' + esc(p) + '</b>, que não existe.');
+      if (p === id) erros.push('<b>' + esc(id) + '</b> não pode ser predecessora de si mesma. Tire ' + esc(id) + ' da lista de predecessoras de ' + esc(id) + '.');
+      else if (!mapa.has(p)) erros.push('<b>' + esc(id) + '</b> depende de <b>' + esc(p) + '</b>, mas não existe atividade com esse código. Códigos existentes: ' + Array.from(mapa.keys()).map(esc).join(', ') + '. Corrija a predecessora de ' + esc(id) + ' ou crie a atividade ' + esc(p) + '.');
       else if (ok.indexOf(p) < 0) ok.push(p);
     });
-    if (state.modo === 'pert' && num(a.p) < num(a.o)) erros.push('Em <b>' + esc(id) + '</b>, o tempo pessimista é menor que o otimista.');
-    else if (state.modo === 'pert' && (num(a.m) < num(a.o) || num(a.m) > num(a.p))) erros.push('Em <b>' + esc(id) + '</b>, o mais provável (m) precisa ficar entre o otimista (o) e o pessimista (p).');
+    if (state.modo === 'pert' && num(a.p) < num(a.o)) erros.push('Em <b>' + esc(id) + '</b>, o tempo pessimista é menor que o otimista. A ordem esperada é o ≤ m ≤ p.');
+    else if (state.modo === 'pert' && (num(a.m) < num(a.o) || num(a.m) > num(a.p))) erros.push('Em <b>' + esc(id) + '</b>, o mais provável (m) precisa ficar entre o otimista (o) e o pessimista (p): o ≤ m ≤ p.');
     const d = durOverride && durOverride.has(id) ? durOverride.get(id) : durDe(a);
-    if (d < 0) erros.push('Duração negativa em <b>' + esc(id) + '</b>.');
+    if (d < 0) erros.push('Duração negativa em <b>' + esc(id) + '</b>. Use um valor igual ou maior que zero.');
     N.set(id, { id, nome: a.nome || '', dur: d, varia: varDe(a), preds: ok, succs: [], ref: a });
   }
   for (const n of N.values()) n.preds.forEach(p => { const x = N.get(p); if (x) x.succs.push(n.id); });
@@ -101,7 +123,9 @@ function calcular(durOverride) {
        (não tem sucessora entre as que sobraram) para nomear apenas as atividades em ciclo. */
     const resto = new Set(Array.from(N.keys()).filter(id => ordem.indexOf(id) < 0));
     for (let mudou = true; mudou;) { mudou = false; resto.forEach(id => { if (!N.get(id).succs.some(x => resto.has(x))) { resto.delete(id); mudou = true; } }); }
-    erros.push('Há dependência circular entre: <b>' + Array.from(resto).map(esc).join(', ') + '</b>. A rede precisa fluir só para a frente.');
+    let dica = '';
+    for (const id of resto) { const p = N.get(id).preds.find(x => resto.has(x)); if (p) { dica = ' Para desfazer, tire ' + esc(p) + ' das predecessoras de ' + esc(id) + ' (ou revise essa ligação).'; break; } }
+    erros.push('Há dependência circular entre: <b>' + Array.from(resto).map(esc).join(', ') + '</b>. A rede precisa fluir só para a frente.' + dica);
     return { erros, avisos, acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0, ciclo: true };
   }
 
@@ -125,8 +149,9 @@ function calcular(durOverride) {
 
   const iniciais = ordem.filter(id => !N.get(id).preds.length);
   const finais = ordem.filter(id => !N.get(id).succs.length);
-  if (finais.length > 1) avisos.push('Há ' + finais.length + ' atividades sem sucessora (' + finais.join(', ') + '). Todas encerram o projeto — se não for isso, ligue-as a uma atividade final.');
-  if (iniciais.length > 1) avisos.push('Há ' + iniciais.length + ' atividades sem predecessora (' + iniciais.join(', ') + '). Todas começam no instante zero.');
+  const algumaLigacao = Array.from(N.values()).some(n => n.preds.length);   /* sem ligação nenhuma, o aluno ainda nem começou: sem aviso */
+  if (algumaLigacao && finais.length > 1) avisos.push('Há ' + finais.length + ' atividades sem sucessora (' + finais.join(', ') + '). Todas encerram o projeto — se não for isso, ligue-as a uma atividade final.');
+  if (algumaLigacao && iniciais.length > 1) avisos.push('Há ' + iniciais.length + ' atividades sem predecessora (' + iniciais.join(', ') + '). Todas começam no instante zero.');
 
   /* Subgrafo crítico: só as atividades sem folga e as ligações em que uma começa
      exatamente quando a outra termina. É por ele — e não pela lista geral de caminhos,
@@ -344,10 +369,23 @@ function renderAvisos() {
 /* ============================================================
    2 · RESULTADOS
    ============================================================ */
+function interpResultados(c) {
+  const t = fmt(c.dur) + ' ' + uni(c.dur);
+  let s = '<b class="t">O que o resultado diz:</b> o projeto dura <b>' + t + '</b>. ';
+  const ncp = c.caminhosCriticos.length;
+  s += ncp <= 1
+    ? 'O caminho crítico é <b>' + c.critSeq.join(' → ') + '</b>: atraso em qualquer uma dessas atividades atrasa o projeto inteiro. '
+    : 'Há <b>' + ncp + ' caminhos críticos</b> (um deles: ' + c.critSeq.join(' → ') + '): atraso em qualquer atividade crítica atrasa o projeto inteiro. ';
+  const folgas = c.acts.filter(n => !n.crit);
+  if (!folgas.length) return s + 'Todas as atividades são críticas: nenhuma tem folga.';
+  const lista = folgas.slice(0, 5).map(n => '<b>' + esc(n.id) + '</b> (' + fmt(n.FT) + ')').join(', ');
+  return s + 'Têm folga: ' + lista + (folgas.length > 5 ? ' e mais ' + (folgas.length - 5) : '') + '. Cada uma pode atrasar até esse valor sem afetar o prazo, mas a folga é compartilhada entre as atividades de um mesmo caminho: se uma usa a folga, a outra perde.';
+}
+
 function renderResultados() {
   const c = calcOut;
-  if (!c.acts.length) { $('#tblResult').innerHTML = ''; $('#listaCaminhos').innerHTML = '<p class="hint">Sem atividades válidas.</p>'; return; }
-  let h = '<thead><tr><th>Atividade</th><th class="dir">Dur.</th><th class="dir">ES</th><th class="dir">EF</th><th class="dir">LS</th><th class="dir">LF</th><th class="dir">FT</th><th class="dir">FL</th><th>Situação</th></tr></thead><tbody>';
+  if (!c.acts.length) { $('#tblResult').innerHTML = ''; $('#interpRes').innerHTML = ''; $('#listaCaminhos').innerHTML = '<p class="hint">Sem atividades válidas.</p>'; return; }
+  let h = '<thead><tr><th>Atividade</th><th class="dir">Dur.</th><th class="dir">' + sg('ES') + '</th><th class="dir">' + sg('EF') + '</th><th class="dir">' + sg('LS') + '</th><th class="dir">' + sg('LF') + '</th><th class="dir">FT</th><th class="dir">FL</th><th>Situação</th></tr></thead><tbody>';
   c.acts.forEach(n => {
     h += '<tr class="' + (n.crit ? 'crit' : '') + '">';
     h += '<td class="cod"><b>' + esc(n.id) + '</b>' + (n.nome ? ' <span class="txt" style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td>';
@@ -357,6 +395,7 @@ function renderResultados() {
     h += '<td class="sit txt">' + (n.crit ? 'Crítica' : 'Folga de ' + fmt(n.FT)) + '</td></tr>';
   });
   $('#tblResult').innerHTML = h + '</tbody>';
+  $('#interpRes').innerHTML = interpResultados(c);
 
   const so = $('#soCriticos').checked;
   const cams = (c.caminhos || []).filter(p => !so || p.crit).slice(0, 60);
@@ -480,12 +519,12 @@ function renderRede() {
     if (cabe) s += '<text x="' + (p.x + 14 + fs * 0.6 * len + 5) + '" y="' + cy + '"' + mono + ' font-size="12.5" fill="' + C.apagado + '">' + esc(durTxt) + '</text>';
     const linha2 = (cabe ? '' : durTxt + '  ') + (n.nome || '');
     if (linha2) {
-      const nm = linha2.length > 25 ? linha2.slice(0, 24) + '…' : linha2;
-      s += '<text x="' + (p.x + 14) + '" y="' + (cy + 13) + '" font-size="10.5" fill="' + C.apagadinho + '">' + esc(nm) + '</text>';
+      const nm = linha2.length > 22 ? linha2.slice(0, 21) + '…' : linha2;
+      s += '<text x="' + (p.x + 14) + '" y="' + (cy + 12) + '" font-size="12" fill="' + C.apagadinho + '">' + esc(nm) + '</text>';
     }
     if (mostraS) {
       s += '<rect x="' + (p.x + p.w - 6 - bw) + '" y="' + (p.y + 30) + '" width="' + bw + '" height="17" rx="3" fill="' + (n.crit ? C.critico : C.folgaFundo) + '"/>';
-      s += '<text x="' + (p.x + p.w - 6 - bw / 2) + '" y="' + (p.y + 42) + '" text-anchor="middle"' + mono + ' font-size="11.5" fill="' + (n.crit ? '#FFFFFF' : C.folga) + '">' + rot + '</text>';
+      s += '<text x="' + (p.x + p.w - 6 - bw / 2) + '" y="' + (p.y + 42) + '" text-anchor="middle"' + mono + ' font-size="12" fill="' + (n.crit ? '#FFFFFF' : C.folga) + '">' + rot + '</text>';
     }
     s += '</g>';
   });
@@ -494,8 +533,8 @@ function renderRede() {
 
   const textos = {
     0: '',
-    1: '<div class="nota"><b>Passo 1 · Caminho de ida</b>Da esquerda para a direita: ES = maior EF das predecessoras, EF = ES + duração. O maior EF da rede é a duração do projeto (' + fmt(c.dur) + ' ' + uni(c.dur) + ').</div>',
-    2: '<div class="nota"><b>Passo 2 · Caminho de volta</b>Da direita para a esquerda: LF da última = ' + fmt(c.dur) + '; nas demais, LF = menor LS das sucessoras e LS = LF − duração.</div>',
+    1: '<div class="nota"><b>Passo 1 · Caminho de ida</b>Da esquerda para a direita: ' + sg('ES') + ' = maior ' + sg('EF') + ' das predecessoras, ' + sg('EF') + ' = ' + sg('ES') + ' + duração. O maior ' + sg('EF') + ' da rede é a duração do projeto (' + fmt(c.dur) + ' ' + uni(c.dur) + ').</div>',
+    2: '<div class="nota"><b>Passo 2 · Caminho de volta</b>Da direita para a esquerda: ' + sg('LF') + ' da última = ' + fmt(c.dur) + '; nas demais, ' + sg('LF') + ' = menor ' + sg('LS') + ' das sucessoras e ' + sg('LS') + ' = ' + sg('LF') + ' − duração.</div>',
     3: ''
   };
   $('#passoTexto').innerHTML = textos[passo] || '';
@@ -508,7 +547,7 @@ function renderRede() {
 function renderGantt() {
   const c = calcOut, box = $('#stageGantt');
   if (!c.acts || !c.acts.length) { box.innerHTML = '<p class="hint" style="padding:24px">Sem atividades.</p>'; return; }
-  const LBL = 120, GAP = 10, PADR = 34, PADT = 40, RH = 30, PADB = 20;
+  const LBL = c.acts.some(n => n.nome) ? 215 : 120, GAP = 10, PADR = 34, PADT = 40, RH = 30, PADB = 20;
   const areaW = Math.max(460, Math.min(1400, c.dur * 46 + 40));
   const W = LBL + GAP + areaW + PADR;
   const linhas = c.acts.slice().sort((a, b) => a.ES - b.ES || a.EF - b.EF || a.id.localeCompare(b.id));
@@ -527,7 +566,7 @@ function renderGantt() {
   for (let v = 0; v <= c.dur + 1e-9; v += passoR) {
     const x = sx(v);
     s += '<line x1="' + x + '" y1="' + (PADT - 14) + '" x2="' + x + '" y2="' + (H - PADB + 2) + '" stroke="#EFEBE3"/>';
-    s += '<text x="' + x + '" y="' + (PADT - 20) + '" text-anchor="middle"' + mono + ' font-size="11" fill="' + C.apagadinho + '">' + esc(rotuloData(v)) + '</text>';
+    s += '<text x="' + x + '" y="' + (PADT - 20) + '" text-anchor="middle"' + mono + ' font-size="12" fill="' + C.apagadinho + '">' + esc(rotuloData(v)) + '</text>';
   }
   s += '<line x1="' + x0 + '" y1="' + (PADT - 14) + '" x2="' + (W - PADR) + '" y2="' + (PADT - 14) + '" stroke="' + C.borda + '"/>';
   s += '<line x1="' + sx(c.dur) + '" y1="' + (PADT - 14) + '" x2="' + sx(c.dur) + '" y2="' + (H - PADB + 2) + '" stroke="' + C.critico + '" stroke-width="1.4" stroke-dasharray="5 4"/>';
@@ -535,13 +574,14 @@ function renderGantt() {
   linhas.forEach((n, i) => {
     const y = PADT + i * RH, yc = y + RH / 2, cor = n.crit ? C.critico : C.navy;
     s += '<text x="' + (LBL - 4) + '" y="' + (yc + (state.inicio ? -1 : 5)) + '" text-anchor="end"' + mono + ' font-size="15" font-weight="600" fill="' + (n.crit ? C.critico : C.tinta) + '">' + esc(n.id) + '</text>';
-    if (state.inicio) s += '<text x="' + (LBL - 4) + '" y="' + (yc + 12) + '" text-anchor="end"' + mono + ' font-size="11.5" fill="' + C.apagadinho + '">' + esc(faixaDatas(n)) + '</text>';
+    if (n.nome) s += '<text x="' + (LBL - 4 - 12 - 9 * String(n.id).length) + '" y="' + (yc + (state.inicio ? -1 : 5)) + '" text-anchor="end" font-size="12" fill="' + C.apagado + '">' + esc(n.nome.length > 19 ? n.nome.slice(0, 18) + '…' : n.nome) + '</text>';
+    if (state.inicio) s += '<text x="' + (LBL - 4) + '" y="' + (yc + 12) + '" text-anchor="end"' + mono + ' font-size="12" fill="' + C.apagadinho + '">' + esc(faixaDatas(n)) + '</text>';
     if (state.gFolga && n.FT > EPS) s += '<rect x="' + sx(n.EF) + '" y="' + (y + 4) + '" width="' + Math.max(2, sx(n.EF + n.FT) - sx(n.EF)) + '" height="8" rx="2" fill="none" stroke="' + C.folga + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
     if (state.gTarde && n.FT > EPS) s += '<rect x="' + sx(n.LS) + '" y="' + (y + 16) + '" width="' + Math.max(2, sx(n.LF) - sx(n.LS)) + '" height="5" rx="2" fill="' + C.neutro + '"/>';
     const bw = Math.max(3, sx(n.EF) - sx(n.ES));
     s += '<rect x="' + sx(n.ES) + '" y="' + (y + 5) + '" width="' + bw + '" height="19" rx="3" fill="' + cor + '"/>';
-    if (bw > 26) s += '<text x="' + (sx(n.ES) + 7) + '" y="' + (y + 18) + '"' + mono + ' font-size="11.5" fill="#FFFFFF">' + fmt(n.dur) + '</text>';
-    else s += '<text x="' + (sx(n.EF) + 6) + '" y="' + (y + 18) + '"' + mono + ' font-size="11.5" fill="' + C.apagado + '">' + fmt(n.dur) + '</text>';
+    if (bw > 26) s += '<text x="' + (sx(n.ES) + 7) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="#FFFFFF">' + fmt(n.dur) + '</text>';
+    else s += '<text x="' + (sx(n.EF) + 6) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="' + C.apagado + '">' + fmt(n.dur) + '</text>';
   });
 
   if (state.gSetas) {
@@ -564,34 +604,38 @@ function renderPert() {
   $('#pertAviso').innerHTML = cpm
     ? '<div class="nota"><b>Informe as três estimativas no modo PERT para ter variabilidade.</b>No modo CPM a duração é determinística: não há distribuição de probabilidade a calcular.</div>'
     : '';
+  const ip = $('#interpPert'); ip.hidden = cpm; if (cpm) ip.innerHTML = '';
   if (!c.acts.length) return;
-  const mu = c.dur, sg = c.sigma;
+  const mu = c.dur, sgm = c.sigma;
 
-  if (!$('#prazoX').value) $('#prazoX').value = r2(mu + (sg > EPS ? sg : Math.max(1, mu * 0.1)));
+  if (!$('#prazoX').value) $('#prazoX').value = r2(mu + (sgm > EPS ? sgm : Math.max(1, mu * 0.1)));
   const X = num($('#prazoX').value);
-  const z = sg > EPS ? (X - mu) / sg : (X >= mu ? Infinity : -Infinity);
-  const P = sg > EPS ? phi(z) : (X >= mu ? 1 : 0);
+  const z = sgm > EPS ? (X - mu) / sgm : (X >= mu ? Infinity : -Infinity);
+  const P = sgm > EPS ? phi(z) : (X >= mu ? 1 : 0);
   $('#saidaProb').innerHTML =
     '<div class="kpis">' +
     '<div class="kpi"><div class="olho">Z</div><div class="v">' + (isFinite(z) ? fmt(z) : '—') + '</div></div>' +
     '<div class="kpi"><div class="olho">Probabilidade</div><div class="v navy">' + (P * 100).toFixed(1).replace('.', ',') + '%</div></div>' +
-    '<div class="kpi"><div class="olho">σ do caminho</div><div class="v">' + fmt(sg) + '</div></div>' +
+    '<div class="kpi"><div class="olho">σ do caminho</div><div class="v">' + fmt(sgm) + '</div></div>' +
     '</div>' +
-    '<p class="hint" style="font-family:var(--mono)">Z = (' + fmt(X) + ' − ' + fmt(mu) + ') ÷ ' + fmt(sg) + '</p>';
-  desenhaNormal(mu, sg, X);
+    '<p class="hint" style="font-family:var(--mono)">Z = (' + fmt(X) + ' − ' + fmt(mu) + ') ÷ ' + fmt(sgm) + '</p>';
+  desenhaNormal(mu, sgm, X);
 
   const cTxt = String($('#confP').value).trim();
   const conf = Math.min(99.9, Math.max(0.1, cTxt === '' ? 95 : num(cTxt))) / 100;
-  const zc = zInv(conf), Xc = mu + zc * sg;
+  const zc = zInv(conf), Xc = mu + zc * sgm;
   $('#saidaConf').innerHTML = '<div class="bloco-navy"><div class="olho">Prazo a prometer</div>' +
     '<div class="grande">' + fmt(Xc) + ' ' + uni(Xc) + '</div>' +
-    '<div class="nota-z">z = ' + fmt(zc) + ' · te + z·σ = ' + fmt(mu) + ' + ' + fmt(zc) + '×' + fmt(sg) + '</div></div>';
+    '<div class="nota-z">z = ' + fmt(zc) + ' · te + z·σ = ' + fmt(mu) + ' + ' + fmt(zc) + '×' + fmt(sgm) + '</div></div>';
   let tc = '<thead><tr><th>Confiança</th><th class="dir">z</th><th class="dir">Prazo</th><th class="dir">Reserva</th></tr></thead><tbody>';
   [50, 75, 80, 90, 95, 99].forEach(pc => {
-    const zz = zInv(pc / 100), xx = mu + zz * sg;
+    const zz = zInv(pc / 100), xx = mu + zz * sgm;
     tc += '<tr><td>' + pc + '%</td><td class="dir">' + fmt(zz) + '</td><td class="dir"><b>' + fmt(xx) + '</b></td><td class="dir">' + fmt(xx - mu) + '</td></tr>';
   });
   $('#tblConf').innerHTML = tc + '</tbody>';
+  ip.innerHTML = sgm <= EPS
+    ? '<b class="t">O que o resultado diz:</b> as estimativas das atividades críticas não variam (o = m = p), então o prazo esperado, <b>' + fmt(mu) + ' ' + uni(mu) + '</b>, é também o prazo certo.'
+    : '<b class="t">O que o resultado diz:</b> em cada 100 projetos como este, cerca de <b>' + Math.round(P * 100) + '</b> terminariam em até <b>' + fmt(X) + ' ' + uni(X) + '</b>. Para ter <b>' + fmt(conf * 100) + '%</b> de segurança, prometa <b>' + fmt(Xc) + ' ' + uni(Xc) + '</b>: uma reserva de ' + fmt(Xc - mu) + ' ' + uni(Xc - mu) + ' sobre o prazo esperado (' + fmt(mu) + ').';
 
   let h = '<thead><tr><th>Atividade</th><th class="dir">o</th><th class="dir">m</th><th class="dir">p</th><th class="dir">te</th><th class="dir">σ²</th><th>No caminho crítico</th></tr></thead><tbody>';
   c.acts.forEach(n => {
@@ -622,9 +666,9 @@ function desenhaNormal(mu, sg, X) {
   s += '<path d="' + d + '" fill="none" stroke="' + C.navy + '" stroke-width="1.6"/>';
   s += '<line x1="' + PX + '" y1="' + (H - PB) + '" x2="' + (W - PX) + '" y2="' + (H - PB) + '" stroke="' + C.borda + '"/>';
   s += '<line x1="' + sx(lim) + '" y1="' + PT + '" x2="' + sx(lim) + '" y2="' + (H - PB) + '" stroke="' + C.critico + '" stroke-width="1.4" stroke-dasharray="4 3"/>';
-  [-2, -1, 0, 1, 2].forEach(k => {
+  [-2, 0, 2].forEach(k => {
     const v = mu + k * sg;
-    s += '<text x="' + sx(v) + '" y="' + (H - PB + 14) + '" text-anchor="middle" font-size="10" fill="' + C.apagadinho + '">' + fmt(v) + '</text>';
+    s += '<text x="' + sx(v) + '" y="' + (H - PB + 15) + '" text-anchor="middle" font-size="13.5" fill="' + C.apagadinho + '">' + fmt(v) + '</text>';
   });
   s += '</svg>';
   box.innerHTML = s;
@@ -729,6 +773,14 @@ function rodarCrash() {
   const temCusto = ind > 0 || passos.some(p => p.add > 0);
   let iOt = 0; passos.forEach((p, i) => { if (p.tot < passos[iOt].tot - EPS) iOt = i; });
   const economia = passos[0].tot - passos[iOt].tot;
+  {
+    const p0 = passos[0], pm = passos[iOt], pf = passos[passos.length - 1];
+    let tx;
+    if (!temCusto) tx = 'sem custos informados, a compressão só mostra como o prazo encurta: de <b>' + fmt(p0.dur) + '</b> até o mínimo de <b>' + fmt(pf.dur) + ' ' + uni(pf.dur) + '</b>. Informe o custo direto, o custo por período acelerado e o custo indireto para descobrir o prazo de menor custo.';
+    else if (iOt === 0) tx = 'comprimir não compensa: o que se economiza de custo indireto é menor que o custo de acelerar as atividades. O melhor prazo é o normal, <b>' + fmt(p0.dur) + ' ' + uni(p0.dur) + '</b>.';
+    else tx = 'o prazo de menor custo total é <b>' + fmt(pm.dur) + ' ' + uni(pm.dur) + '</b>, ' + fmt(p0.dur - pm.dur) + ' ' + uni(p0.dur - pm.dur) + ' a menos que o normal (' + fmt(p0.dur) + '). Acelerar acrescenta <b>' + money(pm.dir - p0.dir) + '</b> ao custo direto, mas o custo indireto cai <b>' + money(p0.ind - pm.ind) + '</b>: o custo total vai de ' + money(p0.tot) + ' para <b>' + money(pm.tot) + '</b>.';
+    $('#interpCrash').innerHTML = '<b class="t">O que o resultado diz:</b> ' + tx;
+  }
 
   $('#crashKpis').innerHTML =
     '<div class="c navy"><div class="olho">Prazo ótimo</div><div class="v">' + fmt(passos[iOt].dur) + ' ' + uni(passos[iOt].dur) + '</div></div>' +
@@ -771,14 +823,16 @@ function desenhaCusto(passos, temCusto, iOt) {
   for (let i = 0; i <= 4; i++) {
     const v = (y1 * i) / 4, y = sy(v);
     s += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '" stroke="' + C.bordaInt + '"/>';
-    s += '<text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end"' + mono + ' font-size="10.5" fill="' + C.apagadinho + '">' + money(Math.round(v)) + '</text>';
+    s += '<text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end"' + mono + ' font-size="12" fill="' + C.apagadinho + '">' + money(Math.round(v)) + '</text>';
   }
-  passos.forEach(p => { s += '<text x="' + sx(p.dur) + '" y="' + (H - B + 16) + '" text-anchor="middle"' + mono + ' font-size="10.5" fill="' + C.apagadinho + '">' + fmt(p.dur) + '</text>'; });
+  /* no máximo ~9 rótulos no eixo (com muitos passos eles se sobrepunham); o ótimo e o último sempre aparecem */
+  const cada = Math.ceil(passos.length / 9);
+  passos.forEach((p, i) => { if (i % cada === 0 || i === iOt || i === passos.length - 1) s += '<text x="' + sx(p.dur) + '" y="' + (H - B + 17) + '" text-anchor="middle"' + mono + ' font-size="12" fill="' + C.apagadinho + '">' + fmt(p.dur) + '</text>'; });
   s += linha('dir', C.critico, 2) + linha('ind', C.folga, 2) + linha('tot', C.navy, 2.6);
   s += '<circle cx="' + sx(passos[iOt].dur) + '" cy="' + sy(passos[iOt].tot) + '" r="5" fill="' + C.navy + '"/>';
-  s += '<text x="' + sx(passos[iOt].dur) + '" y="' + (sy(passos[iOt].tot) - 11) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + C.navy + '">ótimo</text>';
+  s += '<text x="' + sx(passos[iOt].dur) + '" y="' + (sy(passos[iOt].tot) - 11) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + C.navy + '">ótimo</text>';
   s += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="' + C.borda + '"/>';
-  s += '<text x="' + (W - R) + '" y="' + (H - 12) + '" text-anchor="end" font-size="11.5" fill="' + C.apagado + '">duração do projeto →</text>';
+  s += '<text x="' + (W - R) + '" y="' + (H - 12) + '" text-anchor="end" font-size="12" fill="' + C.apagado + '">duração do projeto →</text>';
   s += '</svg>';
   box.innerHTML = s;
 }
@@ -799,7 +853,7 @@ const csvCampo = v => { const t = String(v); return /[;"\r\n]/.test(t) ? '"' + t
 
 function exportarCSV() {
   const c = calcOut; if (!c.acts.length) return;
-  const linhas = ['Atividade;Duracao;ES;EF;LS;LF;FT;FL;Critica'];
+  const linhas = ['Atividade;Duracao;' + [sg('ES'), sg('EF'), sg('LS'), sg('LF')].join(';') + ';FT;FL;Critica'];
   c.acts.forEach(n => {
     linhas.push([n.id, fmt(n.dur), fmt(n.ES), fmt(n.EF), fmt(n.LS), fmt(n.LF), fmt(n.FT), fmt(n.FL), n.crit ? 'Critica' : 'Folga de ' + fmt(n.FT)].map(csvCampo).join(';'));
   });
@@ -967,15 +1021,19 @@ const EXEMPLOS = [
     ['E', 'Acabamento', 4, ['C'], 3, 300], ['F', 'Entrega', 3, ['D', 'E'], 2, 600]]
   }
 ];
-/* Exemplo guiado da aba Dados: 4 atividades, resultado conhecido (12 dias, A → B → D, folga de C = 2). */
-function carregarExemploMini() {
+/* Exemplo guiado da aba Dados: 4 atividades, resultado conhecido (12 dias, A → B → D, folga de C = 2).
+   Também é o estado da primeira visita: números com sentido, sem avisos sobre uma tabela vazia. */
+function estadoExemploGuiado() {
   const st = estadoVazio();
   st.nome = 'Exemplo guiado';
   st.acts = [['A', 'Projeto', 3, []], ['B', 'Fundação', 4, ['A']], ['C', 'Instalações', 2, ['A']], ['D', 'Entrega', 5, ['B', 'C']]].map(x => {
     const o = novoAtv(x[0], x[1]); o.d = x[2]; o.o = x[2]; o.m = x[2]; o.p = x[2]; o.preds = x[3]; return o;
   });
-  carregar(st);
-  toast('Exemplo carregado: confira 12 dias e A → B → D.');
+  return st;
+}
+function carregarExemploMini() {
+  carregar(estadoExemploGuiado());
+  toast('Exemplo carregado: confira 12 dias e ' + 'A → B → D.');
 }
 
 function carregarExemplo(i) {
@@ -1268,12 +1326,14 @@ function irPara(p) {
   $$('#tabs .aba').forEach(t => t.classList.toggle('on', t.dataset.p === p));
   $$('.painel').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
   if (p === 'crash') renderCrashTabela();
+  if (p === 'pratica' && typeof renderPratica === 'function') renderPratica();
   gravarEstado();
 }
 
 function recalcular() {
   invalidaCompressao();
   calcOut = calcular();
+  aplicaNotacao();
   renderAvisos(); renderResumo();
   if (state.modo === 'pert') $$('#tblDados td[data-te]').forEach(td => {
     const a = state.acts[+td.getAttribute('data-te')];
@@ -1318,7 +1378,8 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'crash', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'crash', 'pratica', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
   st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
     const x = Object.assign(novoAtv('A'), a);
     x.id = String(x.id == null ? '' : x.id).trim().toUpperCase().slice(0, 6);
@@ -1339,6 +1400,7 @@ function carregar(novo) {
   $('#uteis').value = String(state.uteis || 0);
   $('#custoInd').value = state.custoInd || '';
   $('#custoInd2').value = state.custoInd || '';
+  $('#notacao').value = state.notacao;
   $('#custoDir').value = state.custoDir || '';
   $('#prazoAlvo').value = state.prazoAlvo || '';
   $('#prazoX').value = '';
@@ -1410,6 +1472,7 @@ function ligar() {
       recalcular();
     });
   });
+  $('#notacao').addEventListener('change', () => { state.notacao = $('#notacao').value === 'intl' ? 'intl' : 'disc'; recalcular(); if (typeof renderPratica === 'function') renderPratica(); });
   $('#custoDir').addEventListener('input', () => { state.custoDir = $('#custoDir').value; invalidaCompressao(); gravarEstado(); });
   $('#prazoAlvo').addEventListener('input', () => { state.prazoAlvo = $('#prazoAlvo').value; invalidaCompressao(); gravarEstado(); });
   $('#custoInd2').addEventListener('input', () => { state.custoInd = $('#custoInd2').value; $('#custoInd').value = state.custoInd; invalidaCompressao(); gravarEstado(); });
@@ -1476,7 +1539,7 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
 (function () {
   ligar();
   const salvo = lerEstado();
-  try { carregar(salvo || estadoVazio()); }
+  try { carregar(salvo || estadoExemploGuiado()); }
   catch (e) {
     /* Rede de segurança: se mesmo assim o estado salvo não servir, guarda uma cópia
        e recomeça limpo, em vez de deixar o app quebrado a cada abertura. */
@@ -1484,6 +1547,7 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
     carregar(estadoVazio());
     toast('Não consegui abrir o projeto anterior; comecei um novo.');
   }
+  try { if (typeof iniciaPratica === 'function') iniciaPratica(); } catch (e) { }
   addEventListener('beforeunload', gravarEstado);
   contarVisita();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
