@@ -256,7 +256,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="topo-in">
     <div class="marca">
       <span class="selo">CP</span>
-      <span><h1>Calculadora PERT/CPM</h1><span class="assina">@LMVN 2026</span></span>
+      <span><h1>Calculadora PERT/CPM</h1></span>
     </div>
     <span class="espaco"></span>
     <div class="topo-acoes">
@@ -280,12 +280,13 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <nav class="abas noprint">
   <div class="nav-in" id="tabs">
     <button class="aba on" data-p="dados"><span class="n">1</span>Dados</button>
-    <button class="aba" data-p="result"><span class="n">2</span>Resultados</button>
-    <button class="aba" data-p="rede"><span class="n">3</span>Diagrama de rede</button>
-    <button class="aba" data-p="gantt"><span class="n">4</span>Gantt</button>
-    <button class="aba" data-p="pert"><span class="n">5</span>Probabilidade</button>
-    <button class="aba" data-p="crash"><span class="n">6</span>Compressão</button>
-    <button class="aba" data-p="pratica"><span class="n">7</span>Praticar</button>
+    <button class="aba" data-p="calend"><span class="n">2</span>Calendário e custos</button>
+    <button class="aba" data-p="result"><span class="n">3</span>Resultados</button>
+    <button class="aba" data-p="rede"><span class="n">4</span>Diagrama de rede</button>
+    <button class="aba" data-p="gantt"><span class="n">5</span>Gantt</button>
+    <button class="aba" data-p="pert"><span class="n">6</span>Probabilidade</button>
+    <button class="aba" data-p="crash"><span class="n">7</span>Compressão</button>
+    <button class="aba" data-p="pratica"><span class="n">8</span>Praticar</button>
     <button class="aba" data-p="guia"><span class="n">?</span>Guia</button>
   </div>
 </nav>
@@ -311,7 +312,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <div class="corpo">
       <ol>
         <li><b>Liste as atividades</b> do projeto, uma por linha, cada uma com um código curto (A, B, C…) e, se quiser, uma descrição.</li>
-        <li><b>Informe a duração</b> de cada uma, na unidade escolhida em “Calendário e custos” (dias, semanas ou meses). Se a duração é incerta, troque para o modo <b>PERT</b> e informe três estimativas: otimista (o), mais provável (m) e pessimista (p).</li>
+        <li><b>Informe a duração</b> de cada uma, na unidade escolhida no passo 2, Calendário e custos (dias, semanas ou meses). Se a duração é incerta, troque para o modo <b>PERT</b> e informe três estimativas: otimista (o), mais provável (m) e pessimista (p).</li>
         <li><b>Preencha as predecessoras:</b> os códigos das atividades que precisam terminar <i>antes</i> desta. Com mais de uma, separe por vírgula (<span class="mono">B, C</span>); se escrever com traço (<span class="mono">B-C</span>), a calculadora corrige para vírgula. Atividade sem predecessora começa o projeto: deixe em branco.</li>
         <li><b>Veja o resultado.</b> O cálculo roda sozinho e o resumo no topo mostra a duração do projeto e o caminho crítico. As abas seguintes detalham: quadro de cálculo, diagrama de rede, Gantt, probabilidade de prazo (modo PERT) e compressão de prazo (custos).</li>
         <li><b>Atalhos:</b> já tem a lista numa planilha? Use <i>Colar do Excel</i>. Prefere descrever o projeto em texto? Use <i>✦ Assistente</i>. Depois, confira sempre a tabela.</li>
@@ -349,17 +350,39 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
   </div>
 
-  <div class="sec" style="margin-top:26px">
-    <h3>Calendário e custos <span class="olho">opcional</span></h3>
-    <p class="apoio">Usado no Gantt (datas reais) e na análise de compressão.</p>
+  <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+    <button class="bt" data-ir="calend">Próximo passo: Calendário e custos (opcional) →</button>
+    <button class="bt primario" data-ir="result">Ver resultados →</button>
+  </div>
+</section>
+
+<!-- ============ CALENDÁRIO E CUSTOS ============ -->
+<section class="painel" id="p-calend">
+  <div class="sec">
+    <h2>Calendário e custos <span class="olho">opcional</span></h2>
+    <p class="apoio">Nada aqui é obrigatório: o cálculo funciona sem estas informações. Elas mudam como os resultados aparecem e liberam a análise de compressão.</p>
   </div>
   <div class="card"><div class="card-corpo grade">
     <div class="campo"><label for="dtInicio">Início do projeto</label><input type="date" id="dtInicio"></div>
     <div class="campo"><label for="unidade">Unidade</label><select id="unidade"><option value="d">dias</option><option value="s">semanas</option><option value="m">meses</option></select></div>
     <div class="campo"><label for="uteis">Dias úteis</label><select id="uteis"><option value="0">Corridos (7/7)</option><option value="1">Seg a sex (5/7)</option></select></div>
     <div class="campo"><label for="custoInd">Custo indireto / período</label><input type="number" id="custoInd" min="0" step="any" placeholder="0"></div>
-    <div class="campo"><label for="notacao">Notação das datas</label><select id="notacao"><option value="disc">PDI · PDT · UDI · UDT (padrão da disciplina)</option><option value="intl">ES · EF · LS · LF (inglês)</option></select></div>
+    <div class="campo" style="grid-column:1/-1"><label for="notacao">Notação das datas</label><select id="notacao"><option value="disc">PDI · PDT · UDI · UDT (padrão da disciplina)</option><option value="intl">ES · EF · LS · LF (inglês)</option></select></div>
   </div></div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo">
+    <h3 style="font-size:21px;margin-bottom:4px">Para que serve cada campo</h3>
+    <dl class="gloss">
+      <dt>Início do projeto</dt><dd>Com uma data, o resumo e o Gantt mostram datas reais (dia/mês) no lugar de números de período.</dd>
+      <dt>Unidade</dt><dd>O que vale cada período da rede: um dia, uma semana ou um mês.</dd>
+      <dt>Dias úteis</dt><dd>“Corridos” conta todos os dias; “Seg a sex” pula sábados e domingos ao calcular as datas (vale para a unidade em dias).</dd>
+      <dt>Custo indireto / período</dt><dd>O que custa manter o projeto de pé a cada período, como gerência e estrutura. É a base da análise de compressão.</dd>
+      <dt>Notação das datas</dt><dd>PDI/PDT/UDI/UDT é a usada na disciplina; ES/EF/LS/LF é a usada em textos em inglês. Muda só os nomes, não os cálculos.</dd>
+    </dl>
+  </div></div>
+  <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+    <button class="bt" data-ir="dados">← Voltar às atividades</button>
+    <button class="bt primario" data-ir="result">Ver resultados →</button>
+  </div>
 </section>
 
 <!-- ============ 2 · RESULTADOS ============ -->

@@ -1324,6 +1324,7 @@ function contarVisita() {
 function irPara(p) {
   state.aba = p;
   $$('#tabs .aba').forEach(t => t.classList.toggle('on', t.dataset.p === p));
+  const ativa = $('#tabs .aba.on'); if (ativa && ativa.scrollIntoView) ativa.scrollIntoView({ inline: 'center', block: 'nearest' });   /* no celular, o menu rola até a aba ativa */
   $$('.painel').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
   if (p === 'crash') renderCrashTabela();
   if (p === 'pratica' && typeof renderPratica === 'function') renderPratica();
@@ -1378,7 +1379,7 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'crash', 'pratica', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'pratica', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
   st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
   st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
     const x = Object.assign(novoAtv('A'), a);
@@ -1529,6 +1530,8 @@ function ligar() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); agenteGerar(); }
   });
 
+  /* botões de avanço entre os passos (data-ir="aba") */
+  document.addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) { irPara(b.dataset.ir); scrollTo(0, 0); } });
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); dlgSalvar(); }
   });
