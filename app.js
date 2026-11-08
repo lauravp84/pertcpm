@@ -21,7 +21,9 @@ const fmt = x => { if (!isFinite(x)) return '—'; const v = r2(x); return (Math
 const money = x => (isFinite(x) ? x.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—');
 const EPS = 1e-9;
 const TETO_CAMINHOS = 300;
-const TETO_PASSOS = 200;
+const TETO_PASSOS = 5000;   /* trava de segurança; na prática a compressão para quando não há mais o que comprimir */
+const MAX_ATIV = 500;       /* acima disso o recálculo a cada tecla fica lento */
+const cabeMais = n => { if (state.acts.length + n <= MAX_ATIV) return true; alerta('O limite é de ' + MAX_ATIV + ' atividades por projeto (hoje: ' + state.acts.length + ').'); return false; };
 const TETO_COMBOS = 4000;
 
 /* ---------- estado ---------- */
@@ -988,6 +990,7 @@ function colar(txt, substituir) {
     novas.push(a);
   });
   if (!novas.length) { alerta('Não identifiquei nenhuma atividade no texto colado.'); return; }
+  if ((substituir ? 0 : state.acts.length) + novas.length > MAX_ATIV) { alerta('O texto colado tem ' + novas.length + ' atividades e passaria do limite de ' + MAX_ATIV + ' por projeto. Nada foi importado.'); return; }
   state.acts = substituir ? novas : state.acts.concat(novas);
   renderDados(); renderCrashTabela(); recalcular();
   $('#painelColar').hidden = true;
@@ -1161,6 +1164,7 @@ function agenteAplicar(substituir) {
     novas.forEach(o => { let id = o.id; if (usados.has(id)) id = proxId(Array.from(usados).map(x => ({ id: x }))); usados.add(id); troca.set(o.id, id); });
     novas.forEach(o => { o.id = troca.get(o.id) || o.id; o.preds = o.preds.map(p => troca.get(p) || p); });
   }
+  if (!substituir && !cabeMais(novas.length)) return;
   state.acts = substituir ? novas : state.acts.concat(novas);
   $('#unidade').value = state.unidade;
   $$('#segModo button').forEach(b => b.classList.toggle('on', b.dataset.m === state.modo));
@@ -1287,7 +1291,7 @@ function normalizaEstado(novo) {
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
   st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'crash', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
-  st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, 500).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
+  st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
     const x = Object.assign(novoAtv('A'), a);
     x.id = String(x.id == null ? '' : x.id).trim().toUpperCase().slice(0, 6);
     x.nome = String(x.nome == null ? '' : x.nome).slice(0, 120);
@@ -1299,7 +1303,9 @@ function normalizaEstado(novo) {
 }
 
 function carregar(novo) {
+  const excesso = novo && Array.isArray(novo.acts) && novo.acts.length > MAX_ATIV;
   state = normalizaEstado(novo);
+  if (excesso) setTimeout(() => alerta('O projeto tinha mais de ' + MAX_ATIV + ' atividades; abri só as ' + MAX_ATIV + ' primeiras.'), 0);
   $('#dtInicio').value = state.inicio || '';
   $('#unidade').value = state.unidade || 'd';
   $('#uteis').value = String(state.uteis || 0);
@@ -1345,8 +1351,8 @@ function ligar() {
     a[e.target.dataset.cf] = e.target.value; invalidaCompressao(); gravarEstado();
   });
 
-  $('#btnAdd').onclick = () => { state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
-  $('#btnAdd5').onclick = () => { for (let i = 0; i < 5; i++) state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
+  $('#btnAdd').onclick = () => { if (!cabeMais(1)) return; state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
+  $('#btnAdd5').onclick = () => { if (!cabeMais(5)) return; for (let i = 0; i < 5; i++) state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
   $('#btnLimpar').onclick = () => abrirDlg('Limpar tudo', '<p>Isso apaga as atividades da tela. Projetos salvos continuam guardados.</p>',
     [['Cancelar', () => $('#dlg').close()], ['Apagar', () => { carregar(estadoVazio()); $('#dlg').close(); }, true]]);
   $('#btnColar').onclick = () => { const p = $('#painelColar'); p.hidden = !p.hidden; if (!p.hidden) $('#taColar').focus(); };
