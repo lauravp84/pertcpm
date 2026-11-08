@@ -1381,7 +1381,7 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'pratica', 'guia'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
   st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
   st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
     const x = Object.assign(novoAtv('A'), a);
