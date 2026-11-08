@@ -99,38 +99,72 @@ function extraiJSON(texto) {
 }
 
 /* Aceita só o que a calculadora sabe usar e conserta o que dá para consertar. */
+/* Aceita só o que a calculadora sabe usar e conserta o que dá para consertar, sem perder
+   informação em silêncio:
+   - códigos válidos são preservados; quem veio sem código ganha um código LIVRE (antes
+     ganhava o da posição e "roubava" o código de outra atividade);
+   - predecessoras valem em qualquer posição da lista (antes, citar uma atividade que
+     aparecia mais abaixo descartava a dependência);
+   - se o modelo propuser um ciclo, a ligação que o fecha é desfeita e isso vai na observação;
+   - a lista volta em ordem topológica;
+   - no PERT, o/m/p são reordenados (antes 9/5/2 virava 9/9/9). */
 function saneia(dados, modo) {
   if (!dados || !Array.isArray(dados.atividades)) return null;
-  const vistos = new Set();
-  const limpas = [];
-  dados.atividades.slice(0, 30).forEach((a, i) => {
-    let id = String(a.id || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
-    if (!id || vistos.has(id)) id = String.fromCharCode(65 + (i % 26)) + (i >= 26 ? String(i) : '');
-    if (vistos.has(id)) return;
-    vistos.add(id);
-    const num = (v, padrao) => {
-      const n = parseFloat(v);
-      return isFinite(n) && n >= 0 && n < 10000 ? n : padrao;
-    };
-    const item = {
-      id,
-      nome: String(a.nome || '').slice(0, 60),
-      preds: (Array.isArray(a.preds) ? a.preds : [])
-        .map(p => String(p).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))
-        .filter(p => p && p !== id && vistos.has(p)),
-    };
+  const brutos = dados.atividades.slice(0, 30).filter(a => a && typeof a === 'object' && !Array.isArray(a));
+  if (!brutos.length) return null;
+  const limpaId = v => String(v == null ? '' : v).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+  const num = (v, padrao) => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) && n >= 0 && n < 10000 ? n : padrao; };
+
+  const usados = new Set();
+  const ids = brutos.map(a => { const id = limpaId(a.id); if (id && !usados.has(id)) { usados.add(id); return id; } return null; });
+  const livre = () => {
+    for (let i = 0; i < 26 * 27; i++) {
+      const c = i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + i % 26);
+      if (!usados.has(c)) { usados.add(c); return c; }
+    }
+    return 'Z' + usados.size;
+  };
+  ids.forEach((id, i) => { if (!id) ids[i] = livre(); });
+  const existe = new Set(ids);
+
+  let lista = brutos.map((a, i) => {
+    const id = ids[i];
+    const preds = [];
+    (Array.isArray(a.preds) ? a.preds : []).forEach(p => { const q = limpaId(p); if (q && q !== id && existe.has(q) && preds.indexOf(q) < 0) preds.push(q); });
+    const item = { id, nome: String(a.nome || '').slice(0, 60), preds };
     if (modo === 'pert') {
-      item.o = num(a.o, 1); item.m = num(a.m, item.o); item.p = num(a.p, item.m);
-      if (item.m < item.o) item.m = item.o;
-      if (item.p < item.m) item.p = item.m;
+      const v = [num(a.o, NaN), num(a.m, NaN), num(a.p, NaN)];
+      const base = v.find(x => isFinite(x)); const w = v.map(x => isFinite(x) ? x : (isFinite(base) ? base : 1)).sort((x, y) => x - y);
+      item.o = w[0]; item.m = w[1]; item.p = w[2];
     } else {
       item.d = num(a.d != null ? a.d : a.m, 1);
     }
-    limpas.push(item);
+    return item;
   });
-  if (!limpas.length) return null;
+
+  /* desfaz ciclos: na busca em profundidade pelas predecessoras, uma ligação para quem
+     ainda está "na pilha" fecha um ciclo e é removida */
+  const by = new Map(lista.map(x => [x.id, x])), marca = new Map();
+  let desfeitas = 0;
+  const visita = id => {
+    marca.set(id, 1);
+    const x = by.get(id);
+    x.preds = x.preds.filter(p => { if (marca.get(p) === 1) { desfeitas++; return false; } if (!marca.get(p)) visita(p); return true; });
+    marca.set(id, 2);
+  };
+  lista.forEach(x => { if (!marca.get(x.id)) visita(x.id); });
+
+  /* ordem topológica, mantendo a ordem original entre as que podem ir juntas */
+  const feitas = new Set(), ordenada = [];
+  while (ordenada.length < lista.length) {
+    const prox = lista.find(x => !feitas.has(x.id) && x.preds.every(p => feitas.has(p)));
+    feitas.add(prox.id); ordenada.push(prox);
+  }
+
   const uni = ['d', 's', 'm'].indexOf(String(dados.unidade || '').trim()) >= 0 ? String(dados.unidade).trim() : 'd';
-  return { unidade: uni, atividades: limpas, observacoes: String(dados.observacoes || '').slice(0, 400) };
+  let obs = String(dados.observacoes || '').slice(0, 400);
+  if (desfeitas) obs = (obs ? obs + ' ' : '') + 'Desfiz ' + desfeitas + ' dependência(s) circular(es) que a proposta continha — confira as precedências.';
+  return { unidade: uni, atividades: ordenada, observacoes: obs };
 }
 
 async function chamaAnthropic(texto, modo) {

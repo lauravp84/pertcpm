@@ -7,7 +7,14 @@
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : 0; };
+/* Lê número no formato brasileiro: "12.000" = doze mil, "1.200,50" = 1200,5, "R$ 1.500" = 1500.
+   Antes, "12.000" virava 12 — justo o formato em que a própria calculadora exibe os custos. */
+const num = v => {
+  let t = String(v == null ? '' : v).trim().replace(/R\$|\s/g, '');
+  if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = parseFloat(t); return isFinite(n) ? n : 0;
+};
 const CASAS = 2;
 const r2 = x => Math.round(x * Math.pow(10, CASAS)) / Math.pow(10, CASAS);
 const fmt = x => { if (!isFinite(x)) return '—'; const v = r2(x); return (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(CASAS).replace('.', ',')); };
@@ -56,6 +63,7 @@ function calcular(durOverride) {
   const mapa = new Map();
   acts.forEach(a => {
     const id = String(a.id).trim().toUpperCase();
+    if (!/^[A-Z0-9_-]+$/.test(id)) erros.push('Código <b>' + esc(id) + '</b> inválido: use só letras, números, - ou _ (sem espaço, vírgula ou ponto e vírgula).');
     if (mapa.has(id)) erros.push('Código repetido: <b>' + esc(id) + '</b>.');
     else mapa.set(id, a);
   });
@@ -71,6 +79,7 @@ function calcular(durOverride) {
       else if (ok.indexOf(p) < 0) ok.push(p);
     });
     if (state.modo === 'pert' && num(a.p) < num(a.o)) erros.push('Em <b>' + esc(id) + '</b>, o tempo pessimista é menor que o otimista.');
+    else if (state.modo === 'pert' && (num(a.m) < num(a.o) || num(a.m) > num(a.p))) erros.push('Em <b>' + esc(id) + '</b>, o mais provável (m) precisa ficar entre o otimista (o) e o pessimista (p).');
     const d = durOverride && durOverride.has(id) ? durOverride.get(id) : durDe(a);
     if (d < 0) erros.push('Duração negativa em <b>' + esc(id) + '</b>.');
     N.set(id, { id, nome: a.nome || '', dur: d, varia: varDe(a), preds: ok, succs: [], ref: a });
@@ -86,8 +95,11 @@ function calcular(durOverride) {
     N.get(id).succs.forEach(s => { indeg.set(s, indeg.get(s) - 1); if (indeg.get(s) === 0) fila.push(s); });
   }
   if (ordem.length < N.size) {
-    const presos = Array.from(N.keys()).filter(id => ordem.indexOf(id) < 0);
-    erros.push('Há dependência circular entre: <b>' + presos.map(esc).join(', ') + '</b>. A rede precisa fluir só para a frente.');
+    /* Sobram o ciclo e o que depende dele; descarta quem só está "a jusante" do ciclo
+       (não tem sucessora entre as que sobraram) para nomear apenas as atividades em ciclo. */
+    const resto = new Set(Array.from(N.keys()).filter(id => ordem.indexOf(id) < 0));
+    for (let mudou = true; mudou;) { mudou = false; resto.forEach(id => { if (!N.get(id).succs.some(x => resto.has(x))) { resto.delete(id); mudou = true; } }); }
+    erros.push('Há dependência circular entre: <b>' + Array.from(resto).map(esc).join(', ') + '</b>. A rede precisa fluir só para a frente.');
     return { erros, avisos, acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0, ciclo: true };
   }
 
@@ -195,26 +207,48 @@ function zInv(p) {
 }
 
 /* ---------- datas ---------- */
-function dataDe(instante) {
+/* Convenção: o período k (0 = primeiro) é um dia, semana ou mês do calendário. Uma atividade
+   com ES = 0 e EF = 5 ocupa os períodos 0 a 4: começa no 1º e TERMINA no 5º — não no 6º.
+   Antes, o término mostrava o dia seguinte ao fim (no 5/7, uma sexta virava segunda). */
+const diaUtil = d => d.getDay() !== 0 && d.getDay() !== 6;
+function baseData() {
   if (!state.inicio) return null;
-  const base = new Date(state.inicio + 'T12:00:00');
-  if (isNaN(base.getTime())) return null;
-  const k = Math.round(instante);
-  const d = new Date(base.getTime());
-  if (state.unidade === 'm') {
-    /* setMonth sozinho transborda: 31/01 + 1 mês viraria 03/03. Prende ao último dia do mês. */
-    const dia = d.getDate();
-    d.setDate(1); d.setMonth(d.getMonth() + k);
-    d.setDate(Math.min(dia, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-    return d;
-  }
-  const dias = state.unidade === 's' ? k * 7 : k;
-  if (!Number(state.uteis) || state.unidade === 's') { d.setDate(d.getDate() + dias); return d; }
-  let falta = dias, guarda = 0;
-  while (falta > 0 && guarda++ < 9999) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) falta--; }
+  const b = new Date(state.inicio + 'T12:00:00');
+  return isNaN(b.getTime()) ? null : b;
+}
+function somaMeses(d, k) {
+  const x = new Date(d.getTime()), dia = x.getDate();
+  x.setDate(1); x.setMonth(x.getMonth() + k);
+  x.setDate(Math.min(dia, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate()));   /* 31/01 + 1 mês = 28/02 */
+  return x;
+}
+/* Primeiro dia de calendário do período k. No 5/7, começa no primeiro dia útil a partir do início. */
+function diaDoPeriodo(k) {
+  const b = baseData(); if (!b) return null;
+  if (state.unidade === 'm') return somaMeses(b, k);
+  const d = new Date(b.getTime());
+  if (state.unidade === 's') { d.setDate(d.getDate() + 7 * k); return d; }
+  if (!Number(state.uteis)) { d.setDate(d.getDate() + k); return d; }
+  while (!diaUtil(d)) d.setDate(d.getDate() + 1);
+  for (let falta = k, g = 0; falta > 0 && g < 20000; g++) { d.setDate(d.getDate() + 1); if (diaUtil(d)) falta--; }
   return d;
 }
-const rotuloData = i => { const d = dataDe(i); return d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : fmt(i); };
+const dataInicio = es => diaDoPeriodo(Math.max(0, Math.floor(es + 1e-9)));
+function dataFim(ef) {
+  const b = baseData(); if (!b) return null;
+  if (ef <= 1e-9) return dataInicio(0);
+  const k = Math.ceil(ef - 1e-9);                     /* períodos ocupados */
+  if (state.unidade === 'm') { const d = somaMeses(b, k); d.setDate(d.getDate() - 1); return d; }
+  if (state.unidade === 's') { const d = new Date(b.getTime()); d.setDate(d.getDate() + 7 * k - 1); return d; }
+  return diaDoPeriodo(k - 1);                         /* último dia trabalhado */
+}
+const dataDe = dataInicio;
+const fmtData = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const rotuloData = i => { const d = dataInicio(i); return d ? fmtData(d) : fmt(i); };
+function faixaDatas(n) {
+  const a = dataInicio(n.ES); if (!a) return '';
+  return n.dur <= EPS ? fmtData(a) : fmtData(a) + '–' + fmtData(dataFim(n.EF));
+}
 
 /* ---------- cores literais (o SVG precisa delas para virar PNG) ---------- */
 let C = {};
@@ -277,7 +311,7 @@ function renderResumo() {
   $('#rAtiv').textContent = vazio ? '—' : String(c.acts.length);
   $('#rCrit').textContent = vazio ? '—' : (c.critSeq.join(' → ') || '—');
   if (vazio) { $('#rFim').textContent = '—'; return; }
-  const d = dataDe(c.dur);
+  const d = dataFim(c.dur);
   $('#rFim').textContent = d ? d.toLocaleDateString('pt-BR') : fmt(c.dur) + ' ' + uni(c.dur);
 }
 
@@ -321,32 +355,67 @@ function renderRede() {
   const c = calcOut, box = $('#stageRede');
   if (!c.acts || !c.acts.length) { box.innerHTML = '<p class="hint" style="padding:24px">Sem rede para desenhar.</p>'; $('#passoTexto').innerHTML = ''; return; }
 
-  const NL = 176, NA = 88, GX = 64, GY = 26, PAD = 30, WF = 96, HF = 54;
-  const camada = new Map();
-  c.acts.forEach(n => camada.set(n.id, n.preds.length ? 1 + Math.max.apply(null, n.preds.map(p => camada.get(p))) : 1));
-  const maxC = Math.max.apply(null, Array.from(camada.values()));
+  const NL = 176, NA = 88, GX = 64, GY = 26, PAD = 30, WF = 96, HF = 54, HP = 10;
+  /* nível = 1 + maior nível das predecessoras */
+  const nivel = new Map([['__ini', 0]]);
+  c.acts.forEach(n => nivel.set(n.id, n.preds.length ? 1 + Math.max.apply(null, n.preds.map(p => nivel.get(p))) : 1));
+  const maxC = Math.max.apply(null, c.acts.map(n => nivel.get(n.id)));
+  nivel.set('__fim', maxC + 1);
+
+  const arestas = [];
+  c.acts.forEach(n => {
+    n.preds.forEach(p => { const np = c.N.get(p); arestas.push({ de: p, para: n.id, crit: n.crit && np.crit && Math.abs(np.EF - n.ES) < EPS, fantasma: false }); });
+    if (!n.preds.length) arestas.push({ de: '__ini', para: n.id, crit: n.crit, fantasma: true });
+    if (!n.succs.length) arestas.push({ de: n.id, para: '__fim', crit: n.crit, fantasma: true });
+  });
+
+  /* Seta que pula colunas ganha um ponto de passagem em cada coluna do meio, com lugar
+     próprio entre as caixas — antes ela passava por trás das caixas e parecia ligar
+     atividades que não têm relação nenhuma. */
   const cols = []; for (let i = 0; i <= maxC + 1; i++) cols.push([]);
-  c.acts.forEach(n => cols[camada.get(n.id)].push(n));
+  cols[0].push('__ini'); cols[maxC + 1].push('__fim');
+  c.acts.forEach(n => cols[nivel.get(n.id)].push(n.id));
+  const cima = new Map(), baixo = new Map();
+  const add = (m, a, b) => { if (!m.has(a)) m.set(a, []); m.get(a).push(b); };
+  arestas.forEach((ar, k) => {
+    ar.cadeia = [ar.de];
+    for (let L = nivel.get(ar.de) + 1; L < nivel.get(ar.para); L++) { const pid = '~' + k + '~' + L; cols[L].push(pid); ar.cadeia.push(pid); }
+    ar.cadeia.push(ar.para);
+    for (let i = 0; i + 1 < ar.cadeia.length; i++) { add(baixo, ar.cadeia[i], ar.cadeia[i + 1]); add(cima, ar.cadeia[i + 1], ar.cadeia[i]); }
+  });
+  /* menos cruzamentos: cada coluna ordenada pela posição média dos vizinhos (empate mantém a ordem digitada) */
+  const ordem = new Map(); cols.forEach(col => col.forEach((id, i) => ordem.set(id, i)));
+  const ordena = (k, viz) => {
+    const bar = id => { const v = viz.get(id) || []; return v.length ? v.reduce((t, x) => t + ordem.get(x), 0) / v.length : ordem.get(id); };
+    cols[k] = cols[k].map((id, i) => ({ id, b: bar(id), i })).sort((a, b) => a.b - b.b || a.i - b.i).map(o => o.id);
+    cols[k].forEach((id, i) => ordem.set(id, i));
+  };
+  for (let volta = 0; volta < 2; volta++) { for (let k = 1; k <= maxC; k++) ordena(k, cima); for (let k = maxC; k >= 1; k--) ordena(k, baixo); }
 
-  const alturas = cols.map((col, i) => (i === 0 || i === maxC + 1) ? HF : Math.max(HF, col.length * (NA + GY) - GY));
-  const altura = PAD * 2 + Math.max.apply(null, alturas);
-  const larg = PAD * 2 + WF * 2 + GX * 2 + (maxC * (NL + GX)) - GX;
-
+  const alt = id => (id === '__ini' || id === '__fim') ? HF : (id.charAt(0) === '~' ? HP : NA);
+  const hCol = col => col.reduce((t, id) => t + alt(id), 0) + GY * Math.max(0, col.length - 1);
+  const altura = PAD * 2 + Math.max.apply(null, cols.map(hCol));
+  const larg = PAD * 2 + WF * 2 + GX * 2 + maxC * (NL + GX) - GX;
   const pos = new Map(); let x = PAD;
-  pos.set('__ini', { x, y: (altura - HF) / 2, w: WF, h: HF });
-  x += WF + GX;
-  for (let i = 1; i <= maxC; i++) {
-    const col = cols[i]; const hTot = col.length * (NA + GY) - GY;
-    let y = (altura - hTot) / 2;
-    col.forEach(n => { pos.set(n.id, { x, y, w: NL, h: NA }); y += NA + GY; });
-    x += NL + GX;
-  }
-  pos.set('__fim', { x, y: (altura - HF) / 2, w: WF, h: HF });
+  cols.forEach((col, k) => {
+    const w = (k === 0 || k === maxC + 1) ? WF : NL;
+    let y = (altura - hCol(col)) / 2;
+    col.forEach(id => { pos.set(id, { x, y, w, h: alt(id) }); y += alt(id) + GY; });
+    x += w + GX;
+  });
 
   const mostraF = passo >= 1, mostraB = passo >= 2, mostraS = passo >= 3;
-  const seta = (x1, y1, x2, y2, crit, fantasma) => {
-    const cor = fantasma ? C.fantasmaBorda : (crit ? C.critico : C.aresta);
-    return '<path d="M' + x1 + ',' + y1 + ' C' + (x1 + 40) + ',' + y1 + ' ' + (x2 - 40) + ',' + y2 + ' ' + (x2 - 2) + ',' + y2 + '" fill="none" stroke="' + cor + '" stroke-width="' + (crit ? 2.2 : 1.3) + '"' + (fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (fantasma ? 'arf' : (crit ? 'arc' : 'ar')) + ')"/>';
+  const curva = (x1, y1, x2, y2) => ' C' + (x1 + 40) + ',' + y1 + ' ' + (x2 - 40) + ',' + y2 + ' ' + x2 + ',' + y2;
+  const desenhaAresta = ar => {
+    const cor = ar.fantasma ? C.fantasmaBorda : (ar.crit ? C.critico : C.aresta);
+    const a = pos.get(ar.cadeia[0]);
+    let x1 = a.x + a.w, y1 = a.y + a.h / 2, d = 'M' + x1 + ',' + y1;
+    for (let i = 1; i < ar.cadeia.length; i++) {
+      const b = pos.get(ar.cadeia[i]), yb = b.y + b.h / 2, ultimo = i === ar.cadeia.length - 1;
+      d += curva(x1, y1, ultimo ? b.x - 2 : b.x, yb);
+      if (!ultimo) { d += ' L' + (b.x + b.w) + ',' + yb; x1 = b.x + b.w; y1 = yb; }
+    }
+    return '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + (ar.crit ? 2.2 : 1.3) + '"' + (ar.fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (ar.fantasma ? 'arf' : (ar.crit ? 'arc' : 'ar')) + ')"/>';
   };
 
   let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg) + '" height="' + Math.round(altura) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
@@ -355,17 +424,8 @@ function renderRede() {
     s += '<marker id="' + par[0] + '" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="' + par[1] + '"/></marker>';
   });
   s += '</defs><rect width="100%" height="100%" fill="' + C.sup + '"/>';
-
-  c.acts.forEach(n => {
-    const pn = pos.get(n.id);
-    n.preds.forEach(p => {
-      const pp = pos.get(p), np = c.N.get(p);
-      const critA = n.crit && np.crit && Math.abs(np.EF - n.ES) < EPS;
-      s += seta(pp.x + pp.w, pp.y + pp.h / 2, pn.x, pn.y + pn.h / 2, critA, false);
-    });
-    if (!n.preds.length) { const pi = pos.get('__ini'); s += seta(pi.x + pi.w, pi.y + pi.h / 2, pn.x, pn.y + pn.h / 2, n.crit, true); }
-    if (!n.succs.length) { const pf = pos.get('__fim'); s += seta(pn.x + pn.w, pn.y + pn.h / 2, pf.x, pf.y + pf.h / 2, n.crit, true); }
-  });
+  arestas.filter(a => !a.crit).forEach(a => { s += desenhaAresta(a); });
+  arestas.filter(a => a.crit).forEach(a => { s += desenhaAresta(a); });   /* críticas por cima */
 
   [['__ini', 'INÍCIO'], ['__fim', 'FIM']].forEach(par => {
     const p = pos.get(par[0]);
@@ -373,11 +433,11 @@ function renderRede() {
     s += '<text x="' + (p.x + p.w / 2) + '" y="' + (p.y + p.h / 2 + 4) + '" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" letter-spacing="1.5" fill="' + C.apagado + '">' + par[1] + '</text>';
   });
 
+  const mono = ' font-family="IBM Plex Mono, monospace" font-variant-numeric="tabular-nums"';
   c.acts.forEach(n => {
     const p = pos.get(n.id);
     const corB = n.crit ? C.critico : C.neutro;
     const fundo = n.crit ? C.criticoFundo : '#FFFFFF';
-    const mono = ' font-family="IBM Plex Mono, monospace" font-variant-numeric="tabular-nums"';
     s += '<g>';
     s += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + fundo + '" stroke="' + corB + '" stroke-width="1.5"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + 1) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
@@ -389,16 +449,22 @@ function renderRede() {
     s += cel(p.x + p.w - 9, p.y + 16, mostraF ? fmt(n.EF) : '·', 'end');
     s += cel(p.x + 9, p.y + p.h - 8, mostraB ? fmt(n.LS) : '·', 'start');
     s += cel(p.x + p.w - 9, p.y + p.h - 8, mostraB ? fmt(n.LF) : '·', 'end');
+    /* Código e duração precisam caber antes do selo da folga: se não cabem em 19px,
+       o código diminui; se nem assim, a duração desce para a linha do nome. */
+    const rot = fmt(n.FT), bw = 12 + rot.length * 7, durTxt = '· ' + fmt(n.dur);
+    const limite = (mostraS ? p.w - 6 - bw - 6 : p.w - 10) - 14;
+    const len = String(n.id).length;
+    let fs = 13, cabe = false;
+    for (const t of [19, 16, 13]) { if (t * 0.6 * len + 5 + 7.5 * durTxt.length <= limite) { fs = t; cabe = true; break; } }
     const cy = p.y + p.h / 2 + 4;
-    s += '<text x="' + (p.x + 14) + '" y="' + cy + '"' + mono + ' font-size="19" font-weight="600" fill="' + (n.crit ? C.critico : C.tinta) + '">' + esc(n.id) + '</text>';
-    s += '<text x="' + (p.x + 16 + 12 * String(n.id).length) + '" y="' + cy + '"' + mono + ' font-size="12.5" fill="' + C.apagado + '">· ' + fmt(n.dur) + '</text>';
-    if (n.nome) {
-      const nm = n.nome.length > 18 ? n.nome.slice(0, 17) + '…' : n.nome;
+    s += '<text x="' + (p.x + 14) + '" y="' + cy + '"' + mono + ' font-size="' + fs + '" font-weight="600" fill="' + (n.crit ? C.critico : C.tinta) + '">' + esc(n.id) + '</text>';
+    if (cabe) s += '<text x="' + (p.x + 14 + fs * 0.6 * len + 5) + '" y="' + cy + '"' + mono + ' font-size="12.5" fill="' + C.apagado + '">' + esc(durTxt) + '</text>';
+    const linha2 = (cabe ? '' : durTxt + '  ') + (n.nome || '');
+    if (linha2) {
+      const nm = linha2.length > 25 ? linha2.slice(0, 24) + '…' : linha2;
       s += '<text x="' + (p.x + 14) + '" y="' + (cy + 13) + '" font-size="10.5" fill="' + C.apagadinho + '">' + esc(nm) + '</text>';
     }
     if (mostraS) {
-      const rot = fmt(n.FT);
-      const bw = 12 + rot.length * 7;
       s += '<rect x="' + (p.x + p.w - 6 - bw) + '" y="' + (p.y + 30) + '" width="' + bw + '" height="17" rx="3" fill="' + (n.crit ? C.critico : C.folgaFundo) + '"/>';
       s += '<text x="' + (p.x + p.w - 6 - bw / 2) + '" y="' + (p.y + 42) + '" text-anchor="middle"' + mono + ' font-size="11.5" fill="' + (n.crit ? '#FFFFFF' : C.folga) + '">' + rot + '</text>';
     }
@@ -433,13 +499,14 @@ function renderGantt() {
   const yOf = id => PADT + linhas.findIndex(n => n.id === id) * RH + RH / 2;
   const mono = ' font-family="IBM Plex Mono, monospace" font-variant-numeric="tabular-nums"';
 
-  const marcas = Math.min(12, Math.max(2, Math.round(c.dur)));
+  /* passo inteiro e redondo (1, 2, 5, 10...), no máximo 12 marcas: antes saíam 2,08 · 4,17 · 6,25 */
+  const passoR = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000].find(p => c.dur / p <= 12) || Math.ceil(c.dur / 12);
   let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(W) + '" height="' + Math.round(H) + '" viewBox="0 0 ' + Math.round(W) + ' ' + Math.round(H) + '" font-family="IBM Plex Sans, sans-serif">';
   s += '<defs><marker id="gs" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="' + C.aresta + '"/></marker></defs>';
   s += '<rect width="100%" height="100%" fill="' + C.sup + '"/>';
 
-  for (let i = 0; i <= marcas; i++) {
-    const v = (c.dur * i) / marcas, x = sx(v);
+  for (let v = 0; v <= c.dur + 1e-9; v += passoR) {
+    const x = sx(v);
     s += '<line x1="' + x + '" y1="' + (PADT - 14) + '" x2="' + x + '" y2="' + (H - PADB + 2) + '" stroke="#EFEBE3"/>';
     s += '<text x="' + x + '" y="' + (PADT - 20) + '" text-anchor="middle"' + mono + ' font-size="11" fill="' + C.apagadinho + '">' + esc(rotuloData(v)) + '</text>';
   }
@@ -449,7 +516,7 @@ function renderGantt() {
   linhas.forEach((n, i) => {
     const y = PADT + i * RH, yc = y + RH / 2, cor = n.crit ? C.critico : C.navy;
     s += '<text x="' + (LBL - 4) + '" y="' + (yc + (state.inicio ? -1 : 5)) + '" text-anchor="end"' + mono + ' font-size="15" font-weight="600" fill="' + (n.crit ? C.critico : C.tinta) + '">' + esc(n.id) + '</text>';
-    if (state.inicio) s += '<text x="' + (LBL - 4) + '" y="' + (yc + 12) + '" text-anchor="end"' + mono + ' font-size="11.5" fill="' + C.apagadinho + '">' + esc(rotuloData(n.ES)) + '–' + esc(rotuloData(n.EF)) + '</text>';
+    if (state.inicio) s += '<text x="' + (LBL - 4) + '" y="' + (yc + 12) + '" text-anchor="end"' + mono + ' font-size="11.5" fill="' + C.apagadinho + '">' + esc(faixaDatas(n)) + '</text>';
     if (state.gFolga && n.FT > EPS) s += '<rect x="' + sx(n.EF) + '" y="' + (y + 4) + '" width="' + Math.max(2, sx(n.EF + n.FT) - sx(n.EF)) + '" height="8" rx="2" fill="none" stroke="' + C.folga + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
     if (state.gTarde && n.FT > EPS) s += '<rect x="' + sx(n.LS) + '" y="' + (y + 16) + '" width="' + Math.max(2, sx(n.LF) - sx(n.LS)) + '" height="5" rx="2" fill="' + C.neutro + '"/>';
     const bw = Math.max(3, sx(n.EF) - sx(n.ES));
@@ -494,7 +561,8 @@ function renderPert() {
     '<p class="hint" style="font-family:var(--mono)">Z = (' + fmt(X) + ' − ' + fmt(mu) + ') ÷ ' + fmt(sg) + '</p>';
   desenhaNormal(mu, sg, X);
 
-  const conf = Math.min(99.9, Math.max(0.1, num($('#confP').value) || 95)) / 100;
+  const cTxt = String($('#confP').value).trim();
+  const conf = Math.min(99.9, Math.max(0.1, cTxt === '' ? 95 : num(cTxt))) / 100;
   const zc = zInv(conf), Xc = mu + zc * sg;
   $('#saidaConf').innerHTML = '<div class="bloco-navy"><div class="olho">Prazo a prometer</div>' +
     '<div class="grande">' + fmt(Xc) + ' ' + uni(Xc) + '</div>' +
@@ -559,15 +627,57 @@ function renderCrashTabela() {
   $('#tblCrash').innerHTML = h + '</tbody>';
 }
 
+/* Corte mínimo no subgrafo crítico: o conjunto de atividades de menor custo que, encurtadas,
+   encurtam TODOS os caminhos críticos de uma vez. Fluxo máximo (Edmonds-Karp), com cada
+   atividade dividida em entrada → saída de capacidade igual ao custo por período.
+   Exato e sem enumerar caminhos: antes, com mais de 300 caminhos críticos, a compressão só
+   via os 300 primeiros, comprimia esses, o projeto não encurtava e ela parava cedo. */
+function corteMinimo(s, dur, dmin, custo) {
+  const crit = s.acts.filter(n => n.crit);
+  if (!crit.length) return null;
+  const GRANDE = 1e15, idx = new Map();
+  crit.forEach((n, i) => idx.set(n.id, 2 + 2 * i));          /* 0 = fonte, 1 = sumidouro */
+  const V = 2 + 2 * crit.length, cap = new Map(), adj = Array.from({ length: V }, () => []);
+  const k = (u, v) => u * V + v;
+  const liga = (u, v, c) => {
+    if (!cap.has(k(u, v))) { adj[u].push(v); adj[v].push(u); cap.set(k(u, v), 0); if (!cap.has(k(v, u))) cap.set(k(v, u), 0); }
+    cap.set(k(u, v), cap.get(k(u, v)) + c);
+  };
+  crit.forEach(n => {
+    const i = idx.get(n.id);
+    const pode = dur.get(n.id) - dmin.get(n.id) > EPS && isFinite(custo.get(n.id));
+    liga(i, i + 1, pode ? custo.get(n.id) : GRANDE);
+    if (!n.preds.length) liga(0, i, GRANDE);
+    if (!n.succs.length) liga(i + 1, 1, GRANDE);
+    n.succs.forEach(x => { const m = s.N.get(x); if (m.crit && Math.abs(n.EF - m.ES) < EPS) liga(i + 1, idx.get(x), GRANDE); });
+  });
+  let fluxo = 0;
+  for (;;) {
+    const pai = new Array(V).fill(-1); pai[0] = 0; const fila = [0];
+    while (fila.length && pai[1] < 0) { const u = fila.shift(); adj[u].forEach(v => { if (pai[v] < 0 && cap.get(k(u, v)) > 1e-12) { pai[v] = u; fila.push(v); } }); }
+    if (pai[1] < 0) break;
+    let f = Infinity; for (let v = 1; v !== 0; v = pai[v]) f = Math.min(f, cap.get(k(pai[v], v)));
+    for (let v = 1; v !== 0; v = pai[v]) { cap.set(k(pai[v], v), cap.get(k(pai[v], v)) - f); cap.set(k(v, pai[v]), cap.get(k(v, pai[v])) + f); }
+    fluxo += f;
+    if (fluxo >= GRANDE / 2) return null;                    /* todo corte passa por atividade incomprimível */
+  }
+  const alcanca = new Array(V).fill(false); alcanca[0] = true; const fila = [0];
+  while (fila.length) { const u = fila.shift(); adj[u].forEach(v => { if (!alcanca[v] && cap.get(k(u, v)) > 1e-12) { alcanca[v] = true; fila.push(v); } }); }
+  const ids = crit.filter(n => alcanca[idx.get(n.id)] && !alcanca[idx.get(n.id) + 1]).map(n => n.id);
+  return ids.length ? { ids, custo: ids.reduce((t, x) => t + custo.get(x), 0) } : null;
+}
+
 function rodarCrash() {
   const base = calcular();
   if (base.erros.length || !base.acts.length) { alerta('Corrija os erros dos dados antes de comprimir.'); return; }
+  const neg = state.acts.filter(a => String(a.id).trim() && a.cc !== '' && num(a.cc) < 0).map(a => a.id);
+  if (neg.length) { alerta('Custo por período negativo em ' + neg.join(', ') + '. Acelerar custa — informe um valor positivo (ou deixe em branco se a atividade não pode ser acelerada).'); return; }
   const dur = new Map(), dmin = new Map(), custo = new Map();
   state.acts.forEach(a => {
     const id = String(a.id).trim().toUpperCase(); if (!id) return;
     const dn = durDe(a);
     dur.set(id, dn);
-    dmin.set(id, a.dmin === '' ? dn : Math.max(0, num(a.dmin)));
+    dmin.set(id, a.dmin === '' ? dn : Math.min(dn, Math.max(0, num(a.dmin))));
     custo.set(id, a.cc === '' ? Infinity : num(a.cc));
   });
   const ind = num($('#custoInd2').value || state.custoInd || 0);
@@ -580,37 +690,20 @@ function rodarCrash() {
 
   for (let it = 1; it < TETO_PASSOS; it++) {
     if (!isNaN(alvo) && s.dur <= alvo + EPS) break;
-    const cps = s.caminhosCriticos;
-    if (!cps.length) break;
-    const conjuntos = cps.map(p => p.ids.filter(id => dur.get(id) - dmin.get(id) > EPS && isFinite(custo.get(id))));
-    if (conjuntos.some(x => !x.length)) break;
-    /* produto cartesiano das alternativas de cada caminho crítico, com teto */
-    let combos = [[]];
-    for (let i = 0; i < conjuntos.length; i++) {
-      const prox = [];
-      for (const comb of combos) {
-        for (const id of conjuntos[i]) {
-          if (comb.indexOf(id) >= 0) prox.push(comb); else prox.push(comb.concat([id]));
-          if (prox.length > TETO_COMBOS) break;
-        }
-        if (prox.length > TETO_COMBOS) break;
-      }
-      combos = prox.slice(0, TETO_COMBOS);
-    }
-    let melhor = null;
-    combos.forEach(comb => {
-      const chaves = Array.from(new Set(comb));
-      if (!chaves.length) return;
-      const custoTot = chaves.reduce((t, k) => t + custo.get(k), 0);
-      if (!melhor || custoTot < melhor.custo - EPS) melhor = { chaves: chaves, custo: custoTot };
-    });
-    if (!melhor || !isFinite(melhor.custo)) break;
-    melhor.chaves.forEach(k => dur.set(k, Math.max(dmin.get(k), dur.get(k) - 1)));
+    const corte = corteMinimo(s, dur, dmin, custo);
+    if (!corte) break;
+    /* Encurta 1 período por passo — menos, se alguma atividade escolhida só tem fração
+       até a duração mínima, ou se outro caminho fica crítico antes: o custo é proporcional. */
+    const folgaMin = Math.min.apply(null, s.acts.filter(n => !n.crit).map(n => n.FT).concat([Infinity]));
+    const delta = Math.min(1, folgaMin, ...corte.ids.map(x => dur.get(x) - dmin.get(x)));
+    if (!(delta > EPS)) break;
+    corte.ids.forEach(x => dur.set(x, dur.get(x) - delta));
     const novo = calcular(dur);
     if (novo.dur >= s.dur - EPS) break;
     s = novo;
-    direto += melhor.custo;
-    passos.push({ quem: melhor.chaves.join(' + '), dur: s.dur, add: melhor.custo, dir: direto, ind: s.dur * ind, tot: direto + s.dur * ind });
+    const add = corte.custo * delta;
+    direto += add;
+    passos.push({ quem: corte.ids.join(' + ') + (delta < 1 - EPS ? ' (−' + fmt(delta) + ')' : ''), dur: s.dur, add: add, dir: direto, ind: s.dur * ind, tot: direto + s.dur * ind });
     if (s.dur <= 0) break;
   }
 
@@ -636,6 +729,10 @@ function rodarCrash() {
   desenhaCusto(passos, temCusto, iOt);
   $('#cardCrashOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+/* Resultado da compressão vale para os dados de quando foi calculado: se algo muda, some
+   (antes continuava na tela, com números que já não correspondiam à rede). */
+function invalidaCompressao() { const c = $('#cardCrashOut'); if (c) c.hidden = true; }
 
 function desenhaCusto(passos, temCusto, iOt) {
   const box = $('#stageCusto');
@@ -679,38 +776,64 @@ function baixar(nomeArq, conteudo, tipo) {
 }
 const nomeArquivo = () => (state.nome || 'projeto').replace(/[^\w\dÀ-ÿ -]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'projeto';
 
+const csvCampo = v => { const t = String(v); return /[;"\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+
 function exportarCSV() {
   const c = calcOut; if (!c.acts.length) return;
   const linhas = ['Atividade;Duracao;ES;EF;LS;LF;FT;FL;Critica'];
   c.acts.forEach(n => {
-    linhas.push([n.id, fmt(n.dur), fmt(n.ES), fmt(n.EF), fmt(n.LS), fmt(n.LF), fmt(n.FT), fmt(n.FL), n.crit ? 'Critica' : 'Folga de ' + fmt(n.FT)].join(';'));
+    linhas.push([n.id, fmt(n.dur), fmt(n.ES), fmt(n.EF), fmt(n.LS), fmt(n.LF), fmt(n.FT), fmt(n.FL), n.crit ? 'Critica' : 'Folga de ' + fmt(n.FT)].map(csvCampo).join(';'));
   });
   baixar(nomeArquivo() + '.csv', '﻿' + linhas.join('\r\n'), 'text/csv;charset=utf-8');
 }
 
-function svgParaPNG(svgEl, nome) {
-  if (!svgEl) return;
-  const s = new XMLSerializer().serializeToString(svgEl);
-  const escala = 2;
+/* Um SVG desenhado como imagem não enxerga as fontes da página: o PNG saía com a fonte
+   genérica. As fontes usadas nos desenhos vão embutidas no próprio SVG. */
+let cssFontesPNG = null;
+async function fontesParaPNG() {
+  if (cssFontesPNG !== null) return cssFontesPNG;
+  const lista = [['IBM Plex Mono', 400, 'IBMPlexMono-400'], ['IBM Plex Mono', 600, 'IBMPlexMono-600'],
+    ['IBM Plex Sans', 400, 'IBMPlexSans-400'], ['IBM Plex Sans', 600, 'IBMPlexSans-600']];
+  try {
+    const regras = await Promise.all(lista.map(async f => {
+      const u = new Uint8Array(await (await fetch('fontes/' + f[2] + '-latin.woff2')).arrayBuffer());
+      let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+      return "@font-face{font-family:'" + f[0] + "';font-weight:" + f[1] + ";src:url(data:font/woff2;base64," + btoa(bin) + ") format('woff2');}";
+    }));
+    cssFontesPNG = regras.join('');
+  } catch (e) { cssFontesPNG = ''; }
+  return cssFontesPNG;
+}
+async function rasterizaSVG(svgEl, escala) {
+  const clone = svgEl.cloneNode(true);
+  const css = await fontesParaPNG();
+  if (css) { const st = document.createElementNS('http://www.w3.org/2000/svg', 'style'); st.textContent = css; clone.insertBefore(st, clone.firstChild); }
   const w = svgEl.viewBox.baseVal.width || svgEl.width.baseVal.value;
   const h = svgEl.viewBox.baseVal.height || svgEl.height.baseVal.value;
+  clone.setAttribute('width', w); clone.setAttribute('height', h);
   const img = new Image();
-  img.onload = () => {
-    const cv = document.createElement('canvas');
-    cv.width = w * escala; cv.height = h * escala;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = C.sup; ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.setTransform(escala, 0, 0, escala, 0, 0);
-    ctx.drawImage(img, 0, 0);
+  await new Promise((ok, erro) => { img.onload = ok; img.onerror = erro; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone)); });
+  try { await img.decode(); } catch (e) { }
+  await new Promise(r => setTimeout(r, 60));
+  const cv = document.createElement('canvas');
+  cv.width = w * escala; cv.height = h * escala;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = C.sup; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(escala, 0, 0, escala, 0, 0);
+  ctx.drawImage(img, 0, 0, w, h);
+  return cv;
+}
+async function svgParaPNG(svgEl, nome) {
+  if (!svgEl) return;
+  try {
+    const cv = await rasterizaSVG(svgEl, 2);
     cv.toBlob(b => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b); a.download = nome + '.png';
       document.body.appendChild(a); a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
     });
-  };
-  img.onerror = () => alerta('Não consegui gerar o PNG neste navegador. Use “Imprimir / PDF”.');
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  } catch (e) { alerta('Não consegui gerar o PNG neste navegador. Use “Imprimir / PDF”.'); }
 }
 
 /* ============================================================
@@ -746,6 +869,13 @@ function lerEstado() {
   return null;
 }
 
+function salvarComo(nome) {
+  state.nome = nome;
+  const l = lerProjetos();
+  l[nome] = JSON.parse(JSON.stringify(state)); l[nome].quando = Date.now();
+  gravarProjetos(l); $('#dlg').close(); toast('Projeto “' + nome + '” salvo.');
+}
+
 function dlgSalvar() {
   abrirDlg('Salvar projeto',
     '<div class="campo"><label for="nomeProj">Nome do projeto</label><input id="nomeProj" value="' + esc(state.nome || '') + '" style="font-family:var(--texto)"></div>' +
@@ -753,10 +883,12 @@ function dlgSalvar() {
     [['Cancelar', () => $('#dlg').close()],
     ['Salvar', () => {
       const nome = ($('#nomeProj').value || '').trim() || 'Sem nome';
-      state.nome = nome;
-      const l = lerProjetos();
-      l[nome] = JSON.parse(JSON.stringify(state)); l[nome].quando = Date.now();
-      gravarProjetos(l); $('#dlg').close(); toast('Projeto “' + nome + '” salvo.');
+      /* Se já existe OUTRO projeto com esse nome, pergunta antes de sobrescrever.
+         Salvar de novo o projeto que está aberto não pergunta nada. */
+      if (lerProjetos()[nome] && nome !== state.nome) {
+        abrirDlg('Substituir projeto', '<p>Já existe um projeto chamado <b>' + esc(nome) + '</b> neste aparelho. Substituir pelo projeto atual?</p>',
+          [['Voltar', dlgSalvar], ['Substituir', () => salvarComo(nome), true]]);
+      } else salvarComo(nome);
     }, true]]);
   setTimeout(() => { const i = $('#nomeProj'); if (i) { i.focus(); i.select(); } }, 60);
 }
@@ -838,13 +970,20 @@ function colar(txt, substituir) {
   if (!linhas.length) return;
   const novas = [];
   const pert = state.modo === 'pert';
+  const ehNum = v => /^[-+]?(R\$)?[\d.,]+$/.test(String(v == null ? '' : v).replace(/\s/g, ''));
+  const listaPreds = cols => cols.join(',').split(/[,;\s]+/).map(x => x.trim().toUpperCase()).filter(Boolean);
   linhas.forEach((l, i) => {
-    const col = l.split(/\t|;|\s{2,}/).map(s => s.trim());
+    /* Do Excel vem tabulação: aí só ela separa colunas, e "A;B" dentro da célula de
+       predecessoras continua sendo uma lista. Sem tabulação, separa por ; ou 2+ espaços. */
+    const col = (l.indexOf('\t') >= 0 ? l.split('\t') : l.split(/;|\s{2,}/)).map(x => x.trim());
     if (!col.length || !col[0]) return;
-    if (i === 0 && /c[oó]d|atividade|tarefa|dura/i.test(col.join(' '))) return;
-    const a = novoAtv(String(col[0]).toUpperCase(), '');
-    if (pert) { a.o = num(col[1]); a.m = num(col[2]); a.p = num(col[3]); a.preds = (col[4] || '').split(/[,;\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean); }
-    else { a.d = num(col[1]); a.preds = (col[2] || '').split(/[,;\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean); }
+    if (i === 0 && !ehNum(col[1]) && /c[oó]d|atividade|tarefa|dura/i.test(col.join(' '))) return;
+    /* coluna de nome opcional: código · nome · duração · predecessoras */
+    let k = 1, nome = '';
+    if (col.length > 2 && !ehNum(col[1]) && ehNum(col[2])) { nome = col[1]; k = 2; }
+    const a = novoAtv(String(col[0]).toUpperCase(), nome);
+    if (pert) { a.o = num(col[k]); a.m = num(col[k + 1]); a.p = num(col[k + 2]); a.d = a.m; a.preds = listaPreds(col.slice(k + 3)); }
+    else { a.d = num(col[k]); a.preds = listaPreds(col.slice(k + 1)); }
     novas.push(a);
   });
   if (!novas.length) { alerta('Não identifiquei nenhuma atividade no texto colado.'); return; }
@@ -1013,6 +1152,14 @@ function agenteAplicar(substituir) {
   });
   state.modo = agProposta.modo;
   state.unidade = agProposta.unidade || state.unidade;
+  if (!substituir) {
+    /* A assistente sempre numera a partir de A; ao acrescentar, renomeia o que colidir
+       com as atividades que já estão na tabela, e ajusta as predecessoras junto. */
+    const usados = new Set(state.acts.map(a => String(a.id).toUpperCase()));
+    const troca = new Map();
+    novas.forEach(o => { let id = o.id; if (usados.has(id)) id = proxId(Array.from(usados).map(x => ({ id: x }))); usados.add(id); troca.set(o.id, id); });
+    novas.forEach(o => { o.id = troca.get(o.id) || o.id; o.preds = o.preds.map(p => troca.get(p) || p); });
+  }
   state.acts = substituir ? novas : state.acts.concat(novas);
   $('#unidade').value = state.unidade;
   $$('#segModo button').forEach(b => b.classList.toggle('on', b.dataset.m === state.modo));
@@ -1092,6 +1239,7 @@ function irPara(p) {
 }
 
 function recalcular() {
+  invalidaCompressao();
   calcOut = calcular();
   renderAvisos(); renderResumo();
   if (state.modo === 'pert') $$('#tblDados td[data-te]').forEach(td => {
@@ -1193,7 +1341,7 @@ function ligar() {
   $('#tblCrash').addEventListener('input', e => {
     const tr = e.target.closest('tr'); if (!tr) return;
     const a = state.acts[+tr.dataset.i]; if (!a) return;
-    a[e.target.dataset.cf] = e.target.value; gravarEstado();
+    a[e.target.dataset.cf] = e.target.value; invalidaCompressao(); gravarEstado();
   });
 
   $('#btnAdd').onclick = () => { state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
@@ -1218,9 +1366,9 @@ function ligar() {
       recalcular();
     });
   });
-  $('#custoDir').addEventListener('input', () => { state.custoDir = $('#custoDir').value; gravarEstado(); });
-  $('#prazoAlvo').addEventListener('input', () => { state.prazoAlvo = $('#prazoAlvo').value; gravarEstado(); });
-  $('#custoInd2').addEventListener('input', () => { state.custoInd = $('#custoInd2').value; $('#custoInd').value = state.custoInd; gravarEstado(); });
+  $('#custoDir').addEventListener('input', () => { state.custoDir = $('#custoDir').value; invalidaCompressao(); gravarEstado(); });
+  $('#prazoAlvo').addEventListener('input', () => { state.prazoAlvo = $('#prazoAlvo').value; invalidaCompressao(); gravarEstado(); });
+  $('#custoInd2').addEventListener('input', () => { state.custoInd = $('#custoInd2').value; $('#custoInd').value = state.custoInd; invalidaCompressao(); gravarEstado(); });
 
   $('#soCriticos').onchange = () => { state.soCriticos = $('#soCriticos').checked; renderResultados(); gravarEstado(); };
   [['gFolga', 'gFolga'], ['gTarde', 'gTarde'], ['gSetas', 'gSetas']].forEach(par => {
