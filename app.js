@@ -272,7 +272,7 @@ function lerCores() {
    ============================================================ */
 function renderDados() {
   const t = $('#tblDados'); const pert = state.modo === 'pert';
-  let h = '<thead><tr><th class="w-cod">Código</th>';
+  let h = '<thead><tr><th class="w-cod">Código</th><th>Atividade</th>';
   h += pert
     ? '<th class="w-num">o</th><th class="w-num">m</th><th class="w-num">p</th><th class="w-num">te</th>'
     : '<th class="w-dur">Duração</th>';
@@ -280,6 +280,7 @@ function renderDados() {
   state.acts.forEach((a, i) => {
     h += '<tr data-i="' + i + '">';
     h += '<td><input class="cod" data-f="id" value="' + esc(a.id) + '" maxlength="6" aria-label="Código"></td>';
+    h += '<td><input data-f="nome" value="' + esc(a.nome) + '" maxlength="120" placeholder="descrição" aria-label="Atividade" style="font-family:var(--texto)"></td>';
     if (pert) {
       h += '<td><input data-f="o" inputmode="decimal" value="' + esc(a.o) + '" aria-label="Otimista"></td>';
       h += '<td><input data-f="m" inputmode="decimal" value="' + esc(a.m) + '" aria-label="Mais provável"></td>';

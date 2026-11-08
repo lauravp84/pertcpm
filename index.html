@@ -13,7 +13,7 @@
   /* ---- cores ---- */
   --papel:#F1EEE8; --superficie:#FBF9F6; --superficie-2:#F7F4EF;
   --borda:#DED8CE; --borda-int:#E7E2D9;
-  --tinta:#16243B; --tinta-2:#2C3A50; --apagado:#5C6A80; --apagadinho:#8A7F70;
+  --tinta:#16243B; --tinta-2:#2C3A50; --apagado:#5C6A80; --apagadinho:#746A5C;
   --navy:#1A3A6B; --navy-escuro:#16243B; --sobre-navy:#F1EEE8;
   --critico:#B3392C; --critico-fundo:#FBEFEC; --critico-claro:#F0A89C;
   --folga:#2E7386; --folga-fundo:#E3EEF1;
@@ -61,7 +61,7 @@ select.bt-topo{padding-right:8px}
 nav.abas{background:var(--superficie);border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:40}
 .nav-in{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 12px}
 .nav-in::-webkit-scrollbar{display:none}
-.aba{border:0;background:transparent;color:#6B7688;padding:12px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent;min-height:44px}
+.aba{border:0;background:transparent;color:#5C6A80;padding:12px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent;min-height:44px}
 .aba:hover{background:var(--papel);color:var(--tinta)}
 .aba.on{color:var(--navy);border-bottom-color:var(--navy)}
 .aba .n{width:19px;height:19px;border:1px solid currentColor;border-radius:999px;display:grid;place-items:center;font-family:var(--mono);font-size:10.5px}
@@ -112,7 +112,7 @@ table.tab input.cod,table.tab input.pred{text-transform:uppercase}
 .remover:hover{background:var(--erro-fundo);color:var(--critico);border-color:var(--erro-borda)}
 .barra-acoes{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:var(--superficie-2);border-top:1px solid var(--borda-int)}
 .w-cod{width:110px}.w-dur{width:120px}.w-num{width:96px}.w-x{width:44px}
-.min560{min-width:560px}.min660{min-width:660px}
+.min560{min-width:680px}.min660{min-width:660px}
 
 /* ---------- avisos ---------- */
 .faixa-erro{background:var(--erro-fundo);border:1px solid var(--erro-borda);border-left:4px solid var(--critico);color:var(--erro-tinta);border-radius:4px;padding:12px 15px;margin-bottom:18px;font-size:14px}
@@ -189,7 +189,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 @media print{
   .noprint{display:none!important}
   body{background:#fff}
-  .painel{display:block!important;page-break-after:always}
+  .painel{display:none!important}
+  .painel.on{display:block!important}
   .card,.palco{border-color:#ccc}
   .resumo,footer.rodape{background:#fff;color:#000;border:1px solid #ccc}
 }
