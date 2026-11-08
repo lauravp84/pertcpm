@@ -413,8 +413,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <h2>Diagrama de rede (AON)</h2>
     <div class="acoes noprint">
       <div id="segPasso" style="display:flex;gap:6px">
-        <button class="bt mini" data-s="1">1 · Forward</button>
-        <button class="bt mini" data-s="2">2 · Backward</button>
+        <button class="bt mini" data-s="1">1 · <i>Forward</i></button>
+        <button class="bt mini" data-s="2">2 · <i>Backward</i></button>
         <button class="bt mini on" data-s="3">3 · Folga</button>
       </div>
       <button class="bt mini" id="btnPlay">▶ Animar</button>
@@ -422,7 +422,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
     <p class="apoio">Cada caixa traz <span class="sg" data-s="ES"></span> · <span class="sg" data-s="EF"></span> na linha de cima, <span class="sg" data-s="LS"></span> · <span class="sg" data-s="LF"></span> embaixo e a folga à direita. Atividades críticas em vermelho.</p>
   </div>
-  <p class="ler"><b class="t">Como ler:</b> cada caixa mostra, em cima, <span class="sga" data-s="ES"></span> (<b class="sg" data-s="ES"></b>) e <span class="sga" data-s="EF"></span> (<b class="sg" data-s="EF"></b>); embaixo, <span class="sga" data-s="LS"></span> (<b class="sg" data-s="LS"></b>) e <span class="sga" data-s="LF"></span> (<b class="sg" data-s="LF"></b>). No centro, o código e a duração; o selo à direita é a folga total. As setas vermelhas ligam as atividades críticas. Use <b>1 · Forward</b>, <b>2 · Backward</b> e <b>3 · Folga</b> para ver o cálculo em etapas, ou <b>▶ Animar</b>.</p>
+  <p class="ler"><b class="t">Como ler:</b> cada caixa mostra, em cima, <span class="sga" data-s="ES"></span> (<b class="sg" data-s="ES"></b>) e <span class="sga" data-s="EF"></span> (<b class="sg" data-s="EF"></b>); embaixo, <span class="sga" data-s="LS"></span> (<b class="sg" data-s="LS"></b>) e <span class="sga" data-s="LF"></span> (<b class="sg" data-s="LF"></b>). No centro, o código e a duração; o selo à direita é a folga total. As setas vermelhas ligam as atividades críticas. Use <b>1 · <i>Forward</i></b>, <b>2 · <i>Backward</i></b> e <b>3 · Folga</b> para ver o cálculo em etapas, ou <b>▶ Animar</b>.</p>
   <div id="passoTexto"></div>
   <div class="palco" id="stageRede"></div>
   <div class="legenda">
@@ -543,9 +543,9 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <section class="painel" id="p-guia">
   <div class="sec"><h2>Como o cálculo funciona</h2></div>
   <div class="guia">
-    <div class="card"><h3>1 · Caminho de ida (forward pass)</h3>
+    <div class="card"><h3>1 · Caminho de ida (<i>forward pass</i>)</h3>
       <p>Percorra a rede do início para o fim. O <b class="sg" data-s="ES"></b> de uma atividade é o maior <b class="sg" data-s="EF"></b> entre suas predecessoras (zero, se não houver nenhuma). O <b class="sg" data-s="EF"></b> é <span class="mono"><span class="sg" data-s="ES"></span> + duração</span>. O maior <span class="sg" data-s="EF"></span> da rede é a duração do projeto.</p></div>
-    <div class="card"><h3>2 · Caminho de volta (backward pass)</h3>
+    <div class="card"><h3>2 · Caminho de volta (<i>backward pass</i>)</h3>
       <p>Agora do fim para o início. O <b class="sg" data-s="LF"></b> da última atividade é a duração do projeto; nas demais, é o menor <b class="sg" data-s="LS"></b> entre as sucessoras. O <b class="sg" data-s="LS"></b> é <span class="mono"><span class="sg" data-s="LF"></span> − duração</span>.</p></div>
     <div class="card"><h3>3 · Folgas</h3>
       <p><b>Folga total</b> = <span class="sg" data-s="LS"></span> − <span class="sg" data-s="ES"></span> = <span class="sg" data-s="LF"></span> − <span class="sg" data-s="EF"></span>: quanto a atividade pode atrasar sem atrasar o <i>projeto</i>. <b>Folga livre</b> = menor <span class="sg" data-s="ES"></span> das sucessoras − <span class="sg" data-s="EF"></span>: quanto pode atrasar sem atrapalhar a <i>próxima</i> atividade. Folga total zero = atividade crítica.</p></div>
@@ -565,7 +565,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
         <dt>te (tempo esperado)</dt><dd>Duração média de uma atividade no PERT: (o + 4m + p) / 6.</dd>
         <dt>σ (desvio-padrão)</dt><dd>Medida da incerteza do prazo. No projeto, σ² é a soma das variâncias das atividades do caminho crítico.</dd>
         <dt>z</dt><dd>Distância entre um prazo e o prazo esperado, medida em desvios-padrão. Com z, obtém-se a probabilidade na curva normal.</dd>
-        <dt>Compressão (crashing)</dt><dd>Redução do prazo acelerando atividades críticas, ao custo de dinheiro.</dd>
+        <dt>Compressão (<i>crashing</i>)</dt><dd>Redução do prazo acelerando atividades críticas, ao custo de dinheiro.</dd>
         <dt>Custo direto e indireto</dt><dd>Direto: o que se paga para executar e acelerar as atividades. Indireto: o que se paga por período enquanto o projeto dura, como gerência e estrutura.</dd>
       </dl></div>
     <div class="conv"><h3 style="font-size:19px;margin-bottom:6px">Convenção de datas</h3>
@@ -587,7 +587,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <span>Calculadora PERT/CPM</span>
     <span class="mono">@LMVN 2026</span>
     <span class="mono" id="visitas" hidden><b></b><span id="visitasRot"> visitas</span></span>
-    <span class="dir">Roda no navegador, offline. Os dados ficam no seu aparelho.</span>
+    <span class="dir">Roda no navegador, <i>offline</i>. Os dados ficam no seu aparelho.</span>
   </div>
 </footer>
 

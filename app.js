@@ -1087,7 +1087,7 @@ function colar(txt, substituir) {
    MODAIS E AVISOS
    ============================================================ */
 function abrirDlg(titulo, corpo, botoes) {
-  $('#dlgTitulo').textContent = titulo;
+  $('#dlgTitulo').innerHTML = titulo;   /* só recebe texto fixo do próprio app, nunca dado digitado */
   $('#dlgCorpo').innerHTML = corpo;
   $('#dlgCorpo').onclick = null;
   const rod = $('#dlgRodape'); rod.innerHTML = '';
@@ -1099,15 +1099,17 @@ function abrirDlg(titulo, corpo, botoes) {
   if (!$('#dlg').open) $('#dlg').showModal();
 }
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
+const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-function toast(msg) {
+function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
     el = document.createElement('div'); el.id = 'toast';
     el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#16243B;color:#F1EEE8;padding:12px 18px;border-radius:4px;font-size:14px;z-index:99;opacity:0;transition:.2s;max-width:90vw';
     document.body.appendChild(el);
   }
-  el.textContent = msg; el.style.opacity = '1';
+  if (confiavel) el.innerHTML = msg; else el.textContent = msg;   /* HTML só para texto fixo do app (itálico em estrangeirismo) */
+  el.style.opacity = '1';
   clearTimeout(toastT); toastT = setTimeout(() => { el.style.opacity = '0'; }, 2600);
 }
 
@@ -1204,7 +1206,7 @@ async function agenteGerar() {
       limite: 'Você já usou a assistente várias vezes nesta hora. Tente de novo mais tarde — enquanto isso, escrever uma atividade por linha continua funcionando.',
       indisponivel: 'A assistente com IA está indisponível no momento. Enquanto isso, escrever uma atividade por linha continua funcionando.',
       limite_geral: 'A assistente atingiu o limite de uso de hoje. Tente amanhã — enquanto isso, escrever uma atividade por linha continua funcionando.',
-      rede: 'Sem conexão com o servidor. A calculadora continua funcionando offline.'
+      rede: 'Sem conexão com o servidor. A calculadora continua funcionando <i>offline</i>.'
     }[motivo] || 'Não consegui montar a lista desta vez.';
     $('#agSaida').innerHTML = '<div class="faixa-erro">' + recado + '</div>';
     return;
@@ -1279,7 +1281,7 @@ function dlgContato() {
     '<div class="item"><div class="t"><b class="mono" id="ctEmail">' + esc(EMAIL_CONTATO) + '</b>' +
     '<span>Dúvida sobre o cálculo, sugestão ou erro encontrado.</span></div>' +
     '<button class="bt mini" id="ctCopiar">Copiar</button></div>' +
-    '<p class="hint">Ou abra direto no seu webmail:</p>' +
+    '<p class="hint">Ou abra direto no seu <i>webmail</i>:</p>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
     '<a class="bt mini" href="' + gmail + '" target="_blank" rel="noopener" style="text-decoration:none">Gmail</a>' +
     '<a class="bt mini" href="' + outlook + '" target="_blank" rel="noopener" style="text-decoration:none">Outlook</a>' +

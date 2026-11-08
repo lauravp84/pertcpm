@@ -205,7 +205,7 @@ function renderPratica() {
     '<button class="bt" data-acao="dica">Dica</button>' +
     '<button class="bt" data-acao="gabarito">Mostrar gabarito</button>' +
     '<button class="bt" data-acao="limpar">Limpar respostas</button>' +
-    '<button class="bt" data-acao="link" style="margin-left:auto">Copiar link do exercício</button></div></div>';
+    '<button class="bt" data-acao="link" style="margin-left:auto">Copiar <i>link</i> do exercício</button></div></div>';
   h += '<div id="prFeedback" aria-live="polite">' + prMsg + '</div>';
   corpo.innerHTML = h;
 }
@@ -274,8 +274,8 @@ const prDeB64 = t => { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.len
 
 function prLink() {
   const url = location.origin + location.pathname + '#ex=' + prB64(JSON.stringify(prEx));
-  const mostra = () => abrirDlg('Link do exercício', '<p>Quem abrir este link recebe o exercício na aba Praticar, sem o gabarito.</p><input id="prUrl" readonly value="' + esc(url) + '" style="width:100%;font-family:var(--mono);font-size:12.5px;padding:10px;border:1px solid var(--borda);border-radius:3px" onclick="this.select()">', [['Fechar', () => $('#dlg').close(), true]]);
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => toast('Link do exercício copiado.')).catch(mostra);
+  const mostra = () => abrirDlg('<i>Link</i> do exercício', '<p>Quem abrir este <i>link</i> recebe o exercício na aba Praticar, sem o gabarito.</p><input id="prUrl" readonly value="' + esc(url) + '" style="width:100%;font-family:var(--mono);font-size:12.5px;padding:10px;border:1px solid var(--borda);border-radius:3px" onclick="this.select()">', [['Fechar', () => $('#dlg').close(), true]]);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => toast('<i>Link</i> do exercício copiado.', true)).catch(mostra);
   else mostra();
 }
 
@@ -333,8 +333,8 @@ function iniciaPratica() {
     try {
       const e = prLimpaEx(JSON.parse(prDeB64(location.hash.slice(4))));
       if (e) { prAbre(e, true); irPara('pratica'); toast('Exercício aberto pelo link. Calcule e confira.'); }
-      else alerta('Não consegui abrir o exercício deste link: ele está incompleto ou com erro.');
-    } catch (err) { alerta('Não consegui abrir o exercício deste link.'); }
+      else alertaHtml('Não consegui abrir o exercício deste <i>link</i>: ele está incompleto ou com erro.');
+    } catch (err) { alertaHtml('Não consegui abrir o exercício deste <i>link</i>.'); }
   }
   renderPratica();
 }
