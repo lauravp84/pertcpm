@@ -297,9 +297,25 @@ function renderDados() {
   t.innerHTML = h + '</tbody>';
 }
 
+/* Lê o texto de predecessoras e devolve a lista de códigos. Vírgula, ponto e vírgula e espaço
+   separam. Traço (-, – ou —), barra, "+" e "&" também são aceitos como separador: quem escreve
+   "A-B" quer dizer "A, B". Exceção: se o trecho inteiro (ex.: "A-1") é o código de uma
+   atividade que existe, ele é mantido. */
+const SEP_ALT = /[-–—\/+&]+/;
+function leiaPreds(texto, codigos) {
+  const saida = [];
+  String(texto == null ? '' : texto).split(/[,;\s]+/).forEach(tok => {
+    const t = tok.trim().toUpperCase(); if (!t) return;
+    const partes = (codigos && codigos.has(t)) ? [t] : t.split(SEP_ALT);
+    partes.forEach(p => { p = p.trim(); if (p && saida.indexOf(p) < 0) saida.push(p); });
+  });
+  return saida;
+}
+const codigosAtuais = () => new Set(state.acts.map(x => String(x.id).trim().toUpperCase()));
+
 function lerCampo(i, f, v) {
   const a = state.acts[i]; if (!a) return;
-  if (f === 'preds') a.preds = String(v).split(/[,;\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (f === 'preds') a.preds = leiaPreds(v, codigosAtuais());
   else if (f === 'id') a.id = String(v).trim().toUpperCase();
   else a[f] = v;
 }
@@ -951,6 +967,17 @@ const EXEMPLOS = [
     ['E', 'Acabamento', 4, ['C'], 3, 300], ['F', 'Entrega', 3, ['D', 'E'], 2, 600]]
   }
 ];
+/* Exemplo guiado da aba Dados: 4 atividades, resultado conhecido (12 dias, A → B → D, folga de C = 2). */
+function carregarExemploMini() {
+  const st = estadoVazio();
+  st.nome = 'Exemplo guiado';
+  st.acts = [['A', 'Projeto', 3, []], ['B', 'Fundação', 4, ['A']], ['C', 'Instalações', 2, ['A']], ['D', 'Entrega', 5, ['B', 'C']]].map(x => {
+    const o = novoAtv(x[0], x[1]); o.d = x[2]; o.o = x[2]; o.m = x[2]; o.p = x[2]; o.preds = x[3]; return o;
+  });
+  carregar(st);
+  toast('Exemplo carregado: confira 12 dias e A → B → D.');
+}
+
 function carregarExemplo(i) {
   const ex = EXEMPLOS[i]; if (!ex) return;
   const st = estadoVazio();
@@ -974,7 +1001,8 @@ function colar(txt, substituir) {
   const novas = [];
   const pert = state.modo === 'pert';
   const ehNum = v => /^[-+]?(R\$)?[\d.,]+$/.test(String(v == null ? '' : v).replace(/\s/g, ''));
-  const listaPreds = cols => cols.join(',').split(/[,;\s]+/).map(x => x.trim().toUpperCase()).filter(Boolean);
+  const codsColados = new Set(linhas.map(l => ((l.indexOf('\t') >= 0 ? l.split('\t') : l.split(/;|\s{2,}/))[0] || '').trim().toUpperCase()));
+  const listaPreds = cols => leiaPreds(cols.join(','), codsColados);
   linhas.forEach((l, i) => {
     /* Do Excel vem tabulação: aí só ela separa colunas, e "A;B" dentro da célula de
        predecessoras continua sendo uma lista. Sem tabulação, separa por ; ou 2+ espaços. */
@@ -1340,6 +1368,15 @@ function ligar() {
     lerCampo(+tr.dataset.i, e.target.dataset.f, e.target.value);
     recalcular();
   });
+  /* Ao sair do campo de predecessoras, reescreve o texto já corrigido ("A-B" → "A, B") e avisa. */
+  $('#tblDados').addEventListener('change', e => {
+    if (e.target.dataset.f !== 'preds') return;
+    const tr = e.target.closest('tr'); const a = tr && state.acts[+tr.dataset.i]; if (!a) return;
+    const original = e.target.value, corrigido = a.preds.join(', ');
+    const trocouSeparador = SEP_ALT.test(original) && corrigido.replace(/\s/g, '') !== original.replace(/\s/g, '').toUpperCase();
+    if (original.trim() !== corrigido) e.target.value = corrigido;
+    if (trocouSeparador) toast('Separador corrigido: “' + original.trim() + '” virou “' + corrigido + '”. Use vírgula entre as predecessoras.');
+  });
   $('#tblDados').addEventListener('click', e => {
     const d = e.target.getAttribute('data-del'); if (d === null) return;
     state.acts.splice(+d, 1);
@@ -1413,6 +1450,11 @@ function ligar() {
   $('#btnProjetos').onclick = dlgProjetos;
 
   $('#btnContato').onclick = dlgContato;
+  $('#btnExemploMini').onclick = carregarExemploMini;
+  /* lembra se a pessoa fechou o passo a passo */
+  const det = $('#comoPreencher');
+  try { if (localStorage.getItem('pertcpm.ajuda') === 'fechada') det.open = false; } catch (e) { }
+  det.addEventListener('toggle', () => { try { localStorage.setItem('pertcpm.ajuda', det.open ? 'aberta' : 'fechada'); } catch (e) { } });
   $('#btnAgente').onclick = agenteAbrir;
   $('#agGerar').onclick = agenteGerar;
   $('#agFechar').onclick = () => $('#dlgAgente').close();
