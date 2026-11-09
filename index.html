@@ -364,12 +364,12 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 #capa .rede-fundo path{fill:none;stroke:#1A3A6B;stroke-width:2;stroke-dasharray:900;stroke-dashoffset:900;animation:capaTraco 3s ease forwards}
 #capa .rede-fundo circle{fill:#C9A227;opacity:0;animation:capaNo .5s ease forwards}
 @keyframes capaTraco{to{stroke-dashoffset:0}}@keyframes capaNo{to{opacity:1}}
-#capa .capa-sim{width:clamp(90px,16vw,150px);animation:capaSobe .9s ease both}
+#capa .capa-sim{width:clamp(70px,12vw,120px);height:auto;animation:capaSobe .9s ease both}
 #capa .capa-logo{width:min(640px,88vw);height:auto;animation:capaSobe .9s .25s ease both}
 #capa .capa-frase{font:400 clamp(15px,2.2vw,19px)/1.5 var(--texto);color:#16243B;max-width:560px;animation:capaSobe .9s .5s ease both}
 #capa .capa-btn{font:600 16px var(--texto);background:#1A3A6B;color:#fff;border:0;border-radius:999px;padding:13px 34px;cursor:pointer;box-shadow:0 4px 14px rgba(26,58,107,.3);animation:capaSobe .9s .75s ease both}
 #capa .capa-btn:hover{background:#C9A227;color:#16243B}
-#capa .capa-ass{position:absolute;bottom:14px;font:500 12px var(--mono,monospace);color:#6b6b6b;letter-spacing:.08em}
+#capa .capa-ass{margin-top:6px;font:500 12px var(--mono,monospace);color:#6b6b6b;letter-spacing:.08em}
 @keyframes capaSobe{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#capa *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}
 </style>
