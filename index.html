@@ -6,6 +6,9 @@
 <title>GEO PERT/CPM — @LMVN 2026</title>
 <meta name="description" content="Calculadora PERT/CPM completa: caminho crítico, folgas, diagrama de rede, Gantt, probabilidade de prazo e compressão de rede. Grátis, offline, sem cadastro.">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/icone-192.png">
+<meta property="og:image" content="img/logo.png">
 <meta name="theme-color" content="#1A3A6B">
 <link rel="stylesheet" href="fontes/fontes.css">
 <style>
@@ -293,6 +296,21 @@ body.projetor .caminho{font-size:18px}
 .ache td.ache-certa{background:var(--folga-fundo)!important;outline:2px solid var(--folga);outline-offset:-2px;font-weight:700}
 .ache td.ache-errada{background:var(--erro-fundo)!important;outline:2px solid var(--critico);outline-offset:-2px}
 .reflexao{margin-top:18px}
+/* ---------- logotipo ---------- */
+.selo-img{display:grid;place-items:center;background:#FBF9F6;border-radius:6px;padding:5px 7px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.selo-img img{display:block;width:46px;height:auto}
+.hero.claro{display:block;background:linear-gradient(180deg,#FFFFFF 0%,#FBF7EE 100%);color:var(--tinta);border:1px solid var(--borda);box-shadow:0 2px 14px rgba(26,58,107,.07);text-align:center;padding:30px 28px 28px}
+.hero.claro .tit-logo{margin:0 auto;max-width:680px}
+.hero.claro .tit-logo img{display:block;width:100%;height:auto}
+.hero.claro .sub{color:var(--tinta-2);margin:18px auto 0;max-width:56ch}
+.hero.claro .acoes-h{justify-content:center}
+.hero.claro .bt{background:#fff;color:var(--navy);border-color:var(--navy)}
+.hero.claro .bt:hover{background:var(--superficie-2)}
+.hero.claro .bt.primario{background:var(--navy);color:var(--sobre-navy);border-color:var(--navy)}
+.hero.claro .bt.primario:hover{background:var(--navy-escuro)}
+.hero.claro .chips{justify-content:center}
+.hero.claro .chips li{color:var(--navy);border-color:rgba(26,58,107,.3);background:#fff}
+@media (max-width:640px){.hero.claro{padding:20px 14px}.selo-img img{width:36px}}
 /* ---------- explicação ao passar o mouse ---------- */
 [data-tip]{cursor:help}
 #tip{position:fixed;z-index:80;max-width:300px;background:var(--navy-escuro,#10264A);color:#fff;font-size:13px;line-height:1.45;padding:10px 12px;border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;white-space:pre-line}
@@ -344,7 +362,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <header class="topo noprint">
   <div class="topo-in">
     <div class="marca">
-      <span class="selo">GEO</span>
+      <span class="selo-img"><img src="img/simbolo.webp" alt="" width="46" height="24"></span>
       <span><h1>GEO PERT/CPM</h1></span>
     </div>
     <span class="espaco"></span>
@@ -394,37 +412,14 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 
 <!-- ============ INÍCIO ============ -->
 <section class="painel on" id="p-inicio" role="tabpanel" tabindex="-1">
-  <div class="hero">
-    <div>
-      <div class="rot">Gestão de projetos · ferramenta de estudo</div>
-      <h2 class="tit">GEO <b>PERT/CPM</b></h2>
-      <p class="sub">Descubra o caminho crítico, as folgas e a chance de cumprir o prazo do seu projeto, com o cálculo explicado passo a passo.</p>
-      <div class="acoes-h noprint">
-        <button class="bt primario" data-ir="dados" data-foco="#tblDados input.cod" style="padding:13px 22px">Começar →</button>
-        <button class="bt" id="btnHeroEx" style="padding:13px 22px">Ver um exemplo pronto</button>
-      </div>
-      <ul class="chips" aria-label="Recursos da calculadora"><li>CPM</li><li>PERT</li><li>Relações PDM</li><li>Gantt</li><li>Monte Carlo</li><li>Recursos</li><li>Corrente crítica</li><li>Valor agregado</li></ul>
+  <div class="hero claro">
+    <h2 class="tit-logo"><img src="img/logo-pequeno.webp" alt="GEO PERT/CPM · Gestão Estratégica de Operações" width="970" height="194"></h2>
+    <p class="sub">Descubra o caminho crítico, as folgas e a chance de cumprir o prazo do seu projeto, com o cálculo explicado passo a passo.</p>
+    <div class="acoes-h noprint">
+      <button class="bt primario" data-ir="dados" data-foco="#tblDados input.cod" style="padding:13px 22px">Começar →</button>
+      <button class="bt" id="btnHeroEx" style="padding:13px 22px">Ver um exemplo pronto</button>
     </div>
-    <div aria-hidden="false"><svg viewBox="0 0 440 250" role="img" aria-label="Exemplo de rede de atividades com o caminho crítico em vermelho" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
-      <defs>
-        <marker id="hA" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#F2B8AE"/></marker>
-        <marker id="hB" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="rgba(241,238,232,.55)"/></marker>
-      </defs>
-      <path d="M118,86 L170,86" stroke="#F2B8AE" stroke-width="2.6" fill="none" marker-end="url(#hA)"/>
-      <path d="M118,86 C140,86 150,172 170,172" stroke="rgba(241,238,232,.5)" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#hB)"/>
-      <path d="M232,86 L284,86" stroke="#F2B8AE" stroke-width="2.6" fill="none" marker-end="url(#hA)"/>
-      <path d="M232,172 C262,172 262,104 284,104" stroke="rgba(241,238,232,.5)" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#hB)"/>
-      <path d="M346,95 L384,95" stroke="#F2B8AE" stroke-width="2.6" fill="none" marker-end="url(#hA)"/>
-      <rect x="14" y="62" width="104" height="48" rx="4" fill="none" stroke="rgba(241,238,232,.5)" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <text x="66" y="91" text-anchor="middle" font-size="13" fill="rgba(241,238,232,.8)" letter-spacing="1.5">INÍCIO</text>
-      <g><rect x="170" y="56" width="62" height="60" rx="4" fill="#FBEFEC" stroke="#F2B8AE" stroke-width="2"/><text x="201" y="92" text-anchor="middle" font-size="20" font-weight="600" fill="#B3392C">A</text><text x="201" y="108" text-anchor="middle" font-size="12" fill="#746A5C">3</text></g>
-      <g><rect x="170" y="142" width="62" height="60" rx="4" fill="#FFFFFF" stroke="rgba(241,238,232,.7)" stroke-width="1.5"/><text x="201" y="178" text-anchor="middle" font-size="20" font-weight="600" fill="#16243B">C</text><text x="201" y="194" text-anchor="middle" font-size="12" fill="#746A5C">2</text></g>
-      <g><rect x="284" y="56" width="62" height="60" rx="4" fill="#FBEFEC" stroke="#F2B8AE" stroke-width="2"/><text x="315" y="92" text-anchor="middle" font-size="20" font-weight="600" fill="#B3392C">B</text><text x="315" y="108" text-anchor="middle" font-size="12" fill="#746A5C">4</text></g>
-      <rect x="384" y="72" width="44" height="46" rx="4" fill="none" stroke="rgba(241,238,232,.5)" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <text x="406" y="100" text-anchor="middle" font-size="12" fill="rgba(241,238,232,.8)" letter-spacing="1">FIM</text>
-      <path d="M14,231 L64,231" stroke="#F2B8AE" stroke-width="2.6" fill="none"/>
-      <text x="74" y="236" font-size="13" fill="rgba(241,238,232,.75)">caminho crítico</text>
-    </svg></div>
+    <ul class="chips" aria-label="Recursos da calculadora"><li>CPM</li><li>PERT</li><li>Relações PDM</li><li>Gantt</li><li>Monte Carlo</li><li>Recursos</li><li>Corrente crítica</li><li>Valor agregado</li></ul>
   </div>
   <div class="sec">
     <h2>Comece por aqui</h2>
