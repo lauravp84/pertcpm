@@ -241,6 +241,45 @@ select.pr{width:96px;text-align:left}
 .passo-card.opc .num::after{content:" · opcional"}
 @media (max-width:760px){.hero{grid-template-columns:1fr;padding:26px 20px 24px}.hero svg{max-width:420px}}
 
+/* ---------- camada didática ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .painel.on{animation:entra .28s ease-out}
+  @keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .resumo .val.muda{animation:pisca .9s ease-out}
+  @keyframes pisca{0%{color:#F2B8AE;text-shadow:0 0 0 rgba(242,184,174,0)}35%{color:#FFFFFF;text-shadow:0 0 14px rgba(242,184,174,.9)}100%{text-shadow:none}}
+  .bt,.aba,.passo-card,.kpi,.card{transition:background .15s,border-color .15s,box-shadow .15s,transform .15s}
+  .passo-card:hover{transform:translateY(-2px)}
+  .tab tbody tr{transition:background .12s}
+}
+.tab tr.clicavel{cursor:pointer}
+.tab tr.clicavel:hover td{background:rgba(26,58,107,.06)}
+.tab tr.realce td{background:rgba(26,58,107,.14)!important;box-shadow:inset 3px 0 0 var(--navy)}
+.tab tr.vizinho td{background:rgba(26,58,107,.05)}
+.tab tr.apagado td{opacity:.45}
+#stageRede g.no{cursor:pointer}
+#stageRede g.realce rect:first-child{stroke-width:3.5;filter:drop-shadow(0 0 6px rgba(26,58,107,.45))}
+#stageRede g.apagado,#stageGantt rect.apagado{opacity:.22}
+#stageRede g.vizinho rect:first-child{stroke-width:2.6}
+#stageGantt rect.realce{stroke:var(--navy);stroke-width:3}
+#stageGantt rect[data-id]{cursor:pointer}
+.explica{background:var(--superficie);border:1px solid var(--borda);border-left:4px solid var(--navy);border-radius:5px;padding:14px 16px;margin-top:12px}
+.explica-t{display:flex;align-items:center;gap:8px;font-size:17px;margin-bottom:6px}
+.explica-passos{margin:0;padding-left:22px;font-size:14.5px;line-height:1.55}
+.explica-passos li{margin:4px 0}
+.explica-passos li::marker{color:var(--navy);font-family:var(--mono)}
+#explicaTudoCorpo h4{font-size:17px;margin:0 0 4px}
+.linha-tempo{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:12px 14px;background:var(--superficie);border:1px solid var(--borda);border-radius:5px}
+.linha-tempo input[type=range]{flex:1;min-width:200px;accent-color:var(--navy)}
+.linha-tempo .txt{flex-basis:100%;font-size:14px}
+input[type=range].faixa{width:100%;max-width:420px;accent-color:var(--navy);margin-top:8px}
+#miniRede{margin-top:4px;background:var(--superficie);border:1px solid var(--borda);border-radius:5px;overflow:hidden;cursor:pointer}
+#miniRede svg{width:100%;height:auto;max-height:260px;display:block}
+#miniRede:empty{display:none}
+.aluno-opcoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.aluno-op{border-color:var(--critico);color:var(--critico)}
+.aluno-op:hover:not([disabled]){background:var(--critico-fundo)}
+.aluno-op[disabled]{opacity:.45;cursor:not-allowed}
+.termo{border-bottom:1px dotted var(--navy);cursor:help;text-decoration:none}
 /* ---------- explicação ao passar o mouse ---------- */
 [data-tip]{cursor:help}
 #tip{position:fixed;z-index:80;max-width:300px;background:var(--navy-escuro,#10264A);color:#fff;font-size:13px;line-height:1.45;padding:10px 12px;border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;white-space:pre-line}
@@ -458,6 +497,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
   </div>
 
+  <details class="como noprint" open style="margin-top:14px"><summary>Prévia da rede (atualiza enquanto você digita; clique para abrir a aba Rede)</summary><div class="corpo" style="padding:8px"><div id="miniRede"></div></div></details>
   <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
     <button class="bt" data-ir="inicio">← Voltar: Início</button>
     <button class="bt" data-ir="calend">Próximo passo: Calendário e custos (opcional) →</button>
@@ -506,7 +546,10 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   </div>
   <p class="ler"><b class="t">Como ler:</b> a atividade <b>crítica</b> tem folga total zero: qualquer atraso nela atrasa o projeto inteiro. A <b>folga total (FT)</b> é quanto a atividade pode atrasar sem atrasar o projeto; a <b>folga livre (FL)</b> é quanto pode atrasar sem atrasar a atividade seguinte. A sequência de atividades críticas é o <b>caminho crítico</b>, e a soma das suas durações é a duração do projeto. Para encurtar o projeto, é nelas que se deve agir.</p>
   <p class="ler interp" id="interpRes"></p>
+  <p class="ler noprint"><b class="t">Interaja:</b> clique numa linha da tabela para ver, com os números dela, de onde saiu cada data e a folga. Clique de novo (ou Esc) para fechar.</p>
   <div class="card"><div class="rolar"><table class="tab navy min660" id="tblResult"></table></div></div>
+  <div id="explicaAtv"></div>
+  <details class="como" style="margin-top:14px"><summary>Ver o cálculo completo, passo a passo (ida e volta)</summary><div class="corpo" id="explicaTudoCorpo"></div></details>
 
   <div class="sec" style="margin-top:26px">
     <h3>Caminhos do projeto</h3>
@@ -534,9 +577,10 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
     <p class="apoio">Cada caixa traz <span class="sg" data-s="ES"></span> · <span class="sg" data-s="EF"></span> na linha de cima, <span class="sg" data-s="LS"></span> · <span class="sg" data-s="LF"></span> embaixo e a folga à direita. Atividades críticas em vermelho.</p>
   </div>
-  <p class="ler noprint"><b class="t">Dica:</b> passe o mouse sobre qualquer número, caixa ou seta: a explicação aparece logo acima (no celular, toque). Use <b>1 · <i>Forward</i></b>, <b>2 · <i>Backward</i></b> e <b>3 · Folga</b> para ver o cálculo em etapas.</p>
+  <p class="ler noprint"><b class="t">Dica:</b> passe o mouse sobre qualquer número, caixa ou seta: a explicação aparece logo acima (no celular, toque). <b>Clique numa caixa</b> para destacar a atividade, suas predecessoras e sucessoras e ver o cálculo dela. Use <b>1 · <i>Forward</i></b>, <b>2 · <i>Backward</i></b> e <b>3 · Folga</b> para ver o cálculo em etapas.</p>
   <div id="passoTexto"></div>
   <div class="palco" id="stageRede"></div>
+  <div id="explicaRede"></div>
   <div class="legenda">
     <span><i style="background:var(--critico-fundo);border:1.5px solid var(--critico)"></i>Atividade crítica (folga = 0)</span>
     <span><i style="background:#fff;border:1.5px solid var(--neutro)"></i>Atividade com folga</span>
@@ -558,6 +602,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   </div>
   <p class="ler"><b class="t">Dica:</b> passe o mouse sobre uma barra ou uma seta para ver a explicação (no celular, toque). <b class="t">Como ler:</b> cada barra cobre o intervalo entre <b class="sg" data-s="ES"></b> e <b class="sg" data-s="EF"></b> da atividade, com a duração escrita dentro. O contorno tracejado é a <b>folga</b>: até onde a atividade pode se estender sem atrasar o projeto. Barras vermelhas são críticas. Com <b>barras tardias</b> ligado, aparece em cinza quando a atividade começaria se fosse deixada para o último momento. Informe a data de início em “Calendário e custos” para ver datas reais.</p>
   <div class="palco" id="stageGantt"></div>
+  <div class="linha-tempo noprint"><label for="gTempo"><b>Linha do tempo</b></label><input type="range" id="gTempo" min="0" max="10" step="1" value="0" aria-label="Período"><button class="bt mini" id="gTempoZerar">limpar</button><div class="txt" id="gTempoTxt"></div></div>
   <div class="legenda">
     <span><i style="background:var(--critico)"></i>Crítica</span>
     <span><i style="background:var(--navy)"></i>Com folga</span>
@@ -581,6 +626,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <div class="campo" style="margin-top:12px;max-width:220px">
         <label for="prazoX">Prazo desejado</label>
         <input type="number" id="prazoX" step="any" style="font-size:18px">
+        <input type="range" id="prazoXr" class="faixa" min="0" max="10" step="0.1" aria-label="Prazo desejado (arraste)">
       </div>
       <div id="saidaProb"></div>
       <div id="stageNormal" style="margin-top:8px"></div>
@@ -635,6 +681,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <button class="bt primario noprint" id="btnCrash" style="height:40px">Calcular compressão</button>
     </div>
   </div></div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo"><h3 style="font-size:21px;margin-bottom:6px">Comprimir na mão (modo aluno)</h3><div id="alunoSaida"></div></div></div>
   <div id="cardCrashOut" hidden>
     <p class="ler interp" id="interpCrash"></p>
     <div class="cards3" id="crashKpis"></div>
@@ -840,7 +887,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </dialog>
 
 <div id="tip" role="tooltip" hidden></div>
-<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script>
+<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script><script src="didatica.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -413,9 +413,10 @@ function lerCampo(i, f, v) {
 function renderResumo() {
   const c = calcOut;
   const vazio = !c.acts || !c.acts.length;
-  $('#rDur').textContent = vazio ? '—' : fmt(c.dur);
-  $('#rAtiv').textContent = vazio ? '—' : String(c.acts.length);
-  $('#rCrit').textContent = vazio ? '—' : (c.critSeq.join(' → ') || '—');
+  const poe = (sel, txt) => { const el = $(sel); if (el.textContent !== txt) { el.textContent = txt; el.classList.remove('muda'); void el.offsetWidth; el.classList.add('muda'); } };
+  poe('#rDur', vazio ? '—' : fmt(c.dur));
+  poe('#rAtiv', vazio ? '—' : String(c.acts.length));
+  poe('#rCrit', vazio ? '—' : (c.critSeq.join(' → ') || '—'));
   if (vazio) { $('#rFim').textContent = '—'; return; }
   const d = dataFim(c.dur);
   $('#rFim').textContent = d ? d.toLocaleDateString('pt-BR') : fmt(c.dur) + ' ' + uni(c.dur);
@@ -449,7 +450,7 @@ function renderResultados() {
   if (!c.acts.length) { $('#tblResult').innerHTML = ''; $('#interpRes').innerHTML = ''; $('#listaCaminhos').innerHTML = '<p class="hint">Sem atividades válidas.</p>'; return; }
   let h = '<thead><tr><th>Atividade</th><th class="dir">Dur.</th><th class="dir">' + sg('ES') + '</th><th class="dir">' + sg('EF') + '</th><th class="dir">' + sg('LS') + '</th><th class="dir">' + sg('LF') + '</th><th class="dir">FT</th><th class="dir">FL</th><th>Situação</th></tr></thead><tbody>';
   c.acts.forEach(n => {
-    h += '<tr class="' + (n.crit ? 'crit' : '') + '">';
+    h += '<tr class="' + (n.crit ? 'crit' : '') + ' clicavel" data-id="' + esc(n.id) + '" title="Clique para ver como estes números foram calculados">';
     h += '<td class="cod"><b>' + esc(n.id) + '</b>' + (n.nome ? ' <span class="txt" style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td>';
     h += '<td class="dir">' + fmt(n.dur) + '</td><td class="dir">' + fmt(n.ES) + '</td><td class="dir">' + fmt(n.EF) + '</td>';
     h += '<td class="dir">' + fmt(n.LS) + '</td><td class="dir">' + fmt(n.LF) + '</td>';
@@ -562,7 +563,7 @@ function renderRede() {
     const p = pos.get(n.id);
     const corB = n.crit ? C.critico : C.neutro;
     const fundo = n.crit ? C.criticoFundo : '#FFFFFF';
-    s += '<g>';
+    s += '<g data-id="' + esc(n.id) + '" class="no">';
     s += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + fundo + '" stroke="' + corB + '" stroke-width="1.5"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + 1) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + p.h - 24) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
@@ -645,6 +646,11 @@ function renderGantt() {
   }
   s += '<line x1="' + x0 + '" y1="' + (PADT - 14) + '" x2="' + (W - PADR) + '" y2="' + (PADT - 14) + '" stroke="' + C.borda + '"/>';
   s += '<line x1="' + sx(c.dur) + '" y1="' + (PADT - 14) + '" x2="' + sx(c.dur) + '" y2="' + (H - PADB + 2) + '" stroke="' + C.critico + '" stroke-width="1.4" stroke-dasharray="5 4"/>';
+  if (ganttT !== null && ganttT <= c.dur + 1e-9) {   /* linha do tempo escolhida no controle deslizante */
+    s += '<rect x="' + x0 + '" y="' + (PADT - 14) + '" width="' + Math.max(0, sx(ganttT) - x0) + '" height="' + (H - PADT + 14 - PADB + 2) + '" fill="' + C.navy + '" opacity="0.06"/>';
+    s += '<line x1="' + sx(ganttT) + '" y1="' + (PADT - 14) + '" x2="' + sx(ganttT) + '" y2="' + (H - PADB + 2) + '" stroke="' + C.navy + '" stroke-width="2"/>';
+    s += '<text x="' + (sx(ganttT) + 5) + '" y="' + (PADT - 2) + '"' + mono + ' font-size="12" font-weight="600" fill="' + C.navy + '">t = ' + fmt(ganttT) + '</text>';
+  }
 
   linhas.forEach((n, i) => {
     const y = PADT + i * RH, yc = y + RH / 2, cor = n.crit ? C.critico : C.navy;
@@ -654,7 +660,7 @@ function renderGantt() {
     if (state.gFolga && n.FT > EPS) s += '<rect data-tip="' + esc('Folga total de ' + fmt(n.FT) + ' ' + uni(n.FT) + ' de ' + n.id + ': a barra tracejada mostra até onde ela pode escorregar sem atrasar o projeto.') + '" x="' + sx(n.EF) + '" y="' + (y + 4) + '" width="' + Math.max(2, sx(n.EF + n.FT) - sx(n.EF)) + '" height="8" rx="2" fill="none" stroke="' + C.folga + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
     if (state.gTarde && n.FT > EPS) s += '<rect x="' + sx(n.LS) + '" y="' + (y + 16) + '" width="' + Math.max(2, sx(n.LF) - sx(n.LS)) + '" height="5" rx="2" fill="' + C.neutro + '"/>';
     const bw = Math.max(3, sx(n.EF) - sx(n.ES));
-    s += '<rect data-tip="' + esc(tipAtiv(n)) + '" x="' + sx(n.ES) + '" y="' + (y + 5) + '" width="' + bw + '" height="19" rx="3" fill="' + cor + '"/>';
+    s += '<rect data-id="' + esc(n.id) + '" data-tip="' + esc(tipAtiv(n)) + '" x="' + sx(n.ES) + '" y="' + (y + 5) + '" width="' + bw + '" height="19" rx="3" fill="' + cor + '"/>';
     if (bw > 26) s += '<text x="' + (sx(n.ES) + 7) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="#FFFFFF">' + fmt(n.dur) + '</text>';
     else s += '<text x="' + (sx(n.EF) + 6) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="' + C.apagado + '">' + fmt(n.dur) + '</text>';
   });
@@ -687,6 +693,7 @@ function renderPert() {
 
   if (!$('#prazoX').value) $('#prazoX').value = r2(mu + (sgm > EPS ? sgm : Math.max(1, mu * 0.1)));
   const X = num($('#prazoX').value);
+  const pr = $('#prazoXr'); if (pr) { const lo = Math.max(0, mu - 4 * (sgm > EPS ? sgm : mu * 0.2)), hi = mu + 4 * (sgm > EPS ? sgm : mu * 0.2); pr.min = Math.floor(lo); pr.max = Math.ceil(hi); pr.step = (hi - lo) > 40 ? 1 : (hi - lo) > 8 ? 0.5 : 0.1; if (document.activeElement !== pr) pr.value = X; }
   const z = sgm > EPS ? (X - mu) / sgm : (X >= mu ? Infinity : -Infinity);
   const P = sgm > EPS ? phi(z) : (X >= mu ? 1 : 0);
   $('#saidaProb').innerHTML =
@@ -1348,7 +1355,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v28';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v29';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
@@ -1597,11 +1604,11 @@ function recalcular() {
   if (calcOut.ciclo || !calcOut.acts.length) {
     ['#stageRede', '#stageGantt'].forEach(s => { $(s).innerHTML = '<p class="hint" style="padding:24px">Sem rede válida para desenhar.</p>'; });
     $('#tblResult').innerHTML = ''; $('#listaCaminhos').innerHTML = '';
-    renderRec(); renderCCPM(); renderControle();
+    renderRec(); renderCCPM(); renderControle(); renderDidatica();
     gravarEstado();
     return;
   }
-  renderResultados(); renderRede(); renderGantt(); renderPert(); renderRec(); renderCCPM(); renderControle();
+  renderResultados(); renderRede(); renderGantt(); renderPert(); renderRec(); renderCCPM(); renderControle(); renderDidatica();
   gravarEstado();
 }
 
@@ -1816,7 +1823,7 @@ function ligar() {
   $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.3, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
   $('#btnZmAjustar').onclick = () => { const w = $('#stageRede').clientWidth - 2; if (redeLarg > 0 && w > 0) { zoomRede = Math.max(0.3, Math.min(2.4, +(w / redeLarg).toFixed(2))); renderRede(); } };
   $('#btnZmMais').onclick = () => { zoomRede = Math.min(2.4, +(zoomRede + 0.2).toFixed(2)); renderRede(); };
-  ligarRecursos(); ligarControle(); ligarCCPM();
+  ligarRecursos(); ligarControle(); ligarCCPM(); ligarDidatica();
   $('#btnExemploMini').onclick = carregarExemploMini;
   $('#btnHeroEx').onclick = () => { carregarExemploMini(); irPara('result'); scrollTo(0, 0); };
   /* lembra se a pessoa fechou o passo a passo */
