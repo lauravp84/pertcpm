@@ -34,7 +34,7 @@ function estadoVazio() {
   return {
     nome: 'Novo projeto', modo: 'cpm', inicio: '', unidade: 'd', uteis: 0,
     custoInd: '', custoDir: '', prazoAlvo: '',
-    notacao: 'disc',
+    notacao: 'disc', recModo: 'alisar', recLim: '', recRegra: 'folga',
     aba: 'dados', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
     acts: [novoAtv('A'), novoAtv('B'), novoAtv('C')]
   };
@@ -773,6 +773,96 @@ function mcRodar() {
   }, 30);
 }
 
+/* ============================================================
+   RECURSOS: carga e nivelamento
+   ============================================================ */
+let rcRes = null, rcSig = '';
+const recMapa = () => { const m = new Map(); state.acts.forEach(a => { const id = String(a.id).trim().toUpperCase(); if (id) m.set(id, Math.max(0, num(a.rec))); }); return m; };
+const rcAssinatura = () => JSON.stringify([state.modo, state.recModo, state.recLim, state.recRegra, state.acts.map(a => [a.id, a.d, a.o, a.m, a.p, a.preds, a.rel, a.rec])]);
+function rcGrafico(seg, tmax, lim, rotulo) {
+  const W = 360, H = 170, PX = 14, PB = 24, PT = 12;
+  const pico = Math.max(rcPico(seg), lim > 0 ? lim : 0, 1e-9), fim = Math.max(tmax, 1e-9);
+  const sx = t => PX + t / fim * (W - PX * 2), sy = u => PT + (1 - u / pico) * (H - PT - PB);
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:560px;display:block" font-family="IBM Plex Mono, monospace" role="img" aria-label="' + esc(rotulo) + '">';
+  seg.forEach(g => { if (g.u > 0) s += '<rect x="' + sx(g.t0).toFixed(1) + '" y="' + sy(g.u).toFixed(1) + '" width="' + Math.max(1, sx(g.t1) - sx(g.t0) - 0.6).toFixed(1) + '" height="' + (H - PB - sy(g.u)).toFixed(1) + '" fill="' + (lim > 0 && g.u > lim + 1e-9 ? C.critico : C.navy) + '" opacity="0.6"/><text x="' + ((sx(g.t0) + sx(g.t1)) / 2).toFixed(1) + '" y="' + (sy(g.u) - 3).toFixed(1) + '" text-anchor="middle" font-size="12" fill="' + C.tinta2 + '">' + fmt(g.u) + '</text>'; });
+  s += '<line x1="' + PX + '" y1="' + (H - PB) + '" x2="' + (W - PX) + '" y2="' + (H - PB) + '" stroke="' + C.borda + '"/>';
+  if (lim > 0) s += '<line x1="' + PX + '" y1="' + sy(lim).toFixed(1) + '" x2="' + (W - PX) + '" y2="' + sy(lim).toFixed(1) + '" stroke="' + C.critico + '" stroke-width="1.5" stroke-dasharray="5 3"/>';
+  [[0, 'start'], [fim / 2, 'middle'], [fim, 'end']].forEach(t => { s += '<text x="' + (t[1] === 'start' ? PX : t[1] === 'end' ? W - PX : W / 2) + '" y="' + (H - PB + 16) + '" text-anchor="' + t[1] + '" font-size="12" fill="' + C.apagadinho + '">' + fmt(t[0]) + '</text>'; });
+  return s + '</svg>';
+}
+function rcGantt(c, S0, S1) {
+  const L = 130, W = 360, PR = 12, lh = 22, H = 20 + c.ordem.length * lh + 22, fim = Math.max(rcDuracao(c, S1), c.dur, 1e-9);
+  const sx = t => L + t / fim * (W - L - PR);
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:680px;display:block" font-family="IBM Plex Sans, sans-serif" role="img" aria-label="Cronograma nivelado">';
+  c.ordem.forEach((id, i) => {
+    const n = c.N.get(id), y = 10 + i * lh, a = S0.get(id), b = S1.get(id), mexeu = Math.abs(a - b) > 1e-9;
+    s += '<text x="' + (L - 6) + '" y="' + (y + 14) + '" text-anchor="end" font-size="12" fill="' + C.tinta + '">' + esc(id) + (n.nome ? ' ' + esc(n.nome.slice(0, 13)) : '') + '</text>';
+    if (mexeu) s += '<rect x="' + sx(a).toFixed(1) + '" y="' + (y + 3) + '" width="' + Math.max(2, sx(a + n.dur) - sx(a)).toFixed(1) + '" height="14" fill="none" stroke="' + C.apagado + '" stroke-dasharray="3 2"/>';
+    s += '<rect x="' + sx(b).toFixed(1) + '" y="' + (y + 3) + '" width="' + Math.max(2, sx(b + n.dur) - sx(b)).toFixed(1) + '" height="14" rx="2" fill="' + (mexeu ? C.folga : (n.crit ? C.critico : C.navy)) + '"/>';
+  });
+  const yb = 10 + c.ordem.length * lh;
+  s += '<line x1="' + L + '" y1="' + yb + '" x2="' + (W - PR) + '" y2="' + yb + '" stroke="' + C.borda + '"/>';
+  [[0, 'start'], [fim / 2, 'middle'], [fim, 'end']].forEach(t => { s += '<text x="' + (t[1] === 'start' ? L : t[1] === 'end' ? W - PR : (L + W - PR) / 2) + '" y="' + (yb + 15) + '" text-anchor="' + t[1] + '" font-size="12" fill="' + C.apagadinho + '">' + fmt(t[0]) + '</text>'; });
+  return s + '</svg>';
+}
+function renderRec() {
+  const t = $('#tblRec'); if (!t) return;
+  const c = calcOut;
+  $('#recModo').value = state.recModo; $('#recRegra').value = state.recRegra;
+  if (document.activeElement !== $('#recLim')) $('#recLim').value = state.recLim;
+  $('#recCampoLim').style.display = $('#recCampoRegra').style.display = state.recModo === 'limite' ? '' : 'none';
+  $('#btnRec').textContent = state.recModo === 'limite' ? 'Nivelar respeitando o limite' : 'Alisar dentro da folga';
+  if (!c || c.vazio || c.ciclo || (c.erros && c.erros.length) || !c.acts.length) {
+    t.innerHTML = ''; $('#recSaida').innerHTML = '<p class="hint">Corrija os erros da aba Dados para ver a carga de recursos.</p>'; return;
+  }
+  if (!t.contains(document.activeElement)) {
+    let h = '<thead><tr><th>Atividade</th><th class="dir">Duração</th><th class="dir"><span class="sg" data-s="ES"></span></th><th class="dir"><span class="sg" data-s="LS"></span></th><th class="dir">Folga</th><th class="w-num">Demanda por período</th></tr></thead><tbody>';
+    c.acts.forEach(n => {
+      const i = state.acts.indexOf(n.ref);
+      h += '<tr class="' + (n.crit ? 'crit' : '') + '"><td class="cod"><b>' + esc(n.id) + '</b>' + (n.nome ? ' <span style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td><td class="dir">' + fmt(n.dur) + '</td><td class="dir">' + fmt(n.ES) + '</td><td class="dir">' + fmt(n.LS) + '</td><td class="dir">' + fmt(n.FT) + '</td>' +
+        '<td><input data-rec="' + i + '" inputmode="decimal" value="' + esc(n.ref.rec) + '" placeholder="0" aria-label="Demanda de ' + esc(n.id) + '"></td></tr>';
+    });
+    t.innerHTML = h + '</tbody>'; aplicaNotacao();
+  }
+  if (rcRes && rcSig !== rcAssinatura()) rcRes = null;
+  const rec = recMapa(), S0 = rcInicioCedo(c), seg0 = rcPerfil(rcItens(c, rec, S0));
+  const limite = num(state.recLim), temDemanda = rcTotal(seg0) > 0;
+  if (!temDemanda) { $('#recSaida').innerHTML = '<p class="hint" style="margin:0">Preencha a coluna <b>Demanda por período</b> para ver a carga. Para testar, carregue o exemplo “Recursos (nivelamento)” em Exemplos.</p>'; return; }
+  let h = '<div class="kpis"><div class="kpi"><div class="olho">Pico de carga</div><div class="v">' + fmt(rcPico(seg0)) + '</div></div><div class="kpi"><div class="olho">Total de unidades × período</div><div class="v">' + fmt(rcTotal(seg0)) + '</div></div><div class="kpi"><div class="olho">Média por período</div><div class="v">' + fmt(rcTotal(seg0) / Math.max(c.dur, 1e-9)) + '</div></div></div>';
+  h += '<h3 style="font-size:19px;margin:16px 0 6px">Carga com todas as atividades o mais cedo possível</h3>' + rcGrafico(seg0, c.dur, state.recModo === 'limite' && limite > 0 ? limite : 0, 'Carga de recursos no cronograma mais cedo');
+  if (state.recModo === 'limite' && limite > 0) h += '<p class="hint">Linha tracejada = limite (' + fmt(limite) + '). Barras vermelhas passam do limite.</p>';
+  if (rcRes) {
+    const r = rcRes, seg1 = rcPerfil(rcItens(c, rec, r.S)), dur1 = rcDuracao(c, r.S);
+    h += '<div class="sec" style="margin-top:22px"><h3>Depois do nivelamento</h3></div>';
+    h += '<div class="kpis"><div class="kpi"><div class="olho">Pico de carga</div><div class="v navy">' + fmt(rcPico(seg1)) + '</div></div><div class="kpi"><div class="olho">Prazo do projeto</div><div class="v ' + (dur1 > c.dur + 1e-9 ? 'crit' : '') + '">' + fmt(dur1) + ' ' + uni(dur1) + '</div></div><div class="kpi"><div class="olho">Variação do prazo</div><div class="v">' + (dur1 - c.dur > 1e-9 ? '+' : '') + fmt(dur1 - c.dur) + '</div></div></div>';
+    h += rcGrafico(seg1, Math.max(dur1, c.dur), state.recModo === 'limite' && limite > 0 ? limite : 0, 'Carga de recursos depois do nivelamento');
+    const mexidas = c.ordem.filter(id => Math.abs(r.S.get(id) - S0.get(id)) > 1e-9);
+    const frase = state.recModo === 'limite'
+      ? (dur1 > c.dur + 1e-9 ? 'Para caber no limite de <b>' + fmt(limite) + '</b>, o projeto passou de <b>' + fmt(c.dur) + '</b> para <b>' + fmt(dur1) + ' ' + uni(dur1) + '</b>: esse é o preço do limite de recursos. ' : 'O limite de <b>' + fmt(limite) + '</b> coube sem atrasar o projeto (<b>' + fmt(c.dur) + ' ' + uni(c.dur) + '</b>). ')
+      : (rcPico(seg1) < rcPico(seg0) - 1e-9 ? 'Deslocar atividades dentro da folga baixou o pico de <b>' + fmt(rcPico(seg0)) + '</b> para <b>' + fmt(rcPico(seg1)) + '</b> sem mexer no prazo (<b>' + fmt(c.dur) + ' ' + uni(c.dur) + '</b>). ' : 'Não há folga suficiente para reduzir o pico sem atrasar o projeto; a carga já é a mais uniforme possível dentro das folgas. ');
+    h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> ' + frase + (mexidas.length ? 'Atividades deslocadas: <b>' + mexidas.map(esc).join(', ') + '</b>.' : 'Nenhuma atividade precisou mudar de lugar.') + '</p>';
+    h += '<h3 style="font-size:19px;margin:16px 0 6px">Cronograma nivelado</h3><p class="hint" style="margin:0 0 8px">Barra cheia = início depois do nivelamento; contorno tracejado = início mais cedo original; verde = atividade deslocada.</p>' + rcGantt(c, S0, r.S);
+    h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Atividade</th><th class="dir">Início original</th><th class="dir">Início nivelado</th><th class="dir">Deslocamento</th></tr></thead><tbody>';
+    c.ordem.forEach(id => { const d = r.S.get(id) - S0.get(id); h += '<tr class="' + (Math.abs(d) > 1e-9 ? 'crit' : '') + '"><td class="cod"><b>' + esc(id) + '</b></td><td class="dir">' + fmt(S0.get(id)) + '</td><td class="dir"><b>' + fmt(r.S.get(id)) + '</b></td><td class="dir">' + (Math.abs(d) > 1e-9 ? '+' + fmt(d) : '—') + '</td></tr>'; });
+    h += '</tbody></table></div>';
+  }
+  $('#recSaida').innerHTML = h;
+}
+function recRodar() {
+  const c = calcOut;
+  if (!c || c.erros.length || !c.acts.length) { alerta('Corrija os erros dos dados antes de nivelar.'); return; }
+  const rec = recMapa();
+  if (!Array.from(rec.values()).some(v => v > 0)) { alerta('Informe a demanda de recurso de pelo menos uma atividade.'); return; }
+  let r;
+  if (state.recModo === 'limite') {
+    const L = num(state.recLim);
+    if (!(L > 0)) { alerta('Informe o limite de recursos por período (um número maior que zero).'); return; }
+    r = rcLimitar(c, rec, L, state.recRegra);
+    if (r.erro) { alerta('A atividade ' + r.erro + ' precisa de ' + fmt(rec.get(r.erro)) + ' unidades por período, mais que o limite de ' + fmt(L) + '. Aumente o limite ou reduza a demanda dela.'); return; }
+  } else r = rcAlisar(c, rec);
+  rcRes = r; rcSig = rcAssinatura(); renderRec();
+}
+
 function desenhaNormal(mu, sg, X) {
   const box = $('#stageNormal');
   if (sg <= EPS) { box.innerHTML = ''; return; }
@@ -1147,6 +1237,12 @@ const EXEMPLOS = [
     ['D', 'Estrutura', 10, ['C(TT+2)']], ['E', 'Instalações', 5, ['C(+1)']], ['F', 'Entrega', 2, ['D', 'E']]]
   },
   {
+    nome: 'Recursos (nivelamento)', modo: 'cpm', unidade: 'd', recLim: 5,
+    rec: [2, 3, 2, 3, 2, 3, 1],
+    acts: [['A', 'Preparação', 3, []], ['B', 'Módulo 1', 3, ['A']], ['C', 'Módulo 2', 5, ['A']], ['D', 'Módulo 3', 2, ['A']],
+    ['E', 'Integração 1', 4, ['B']], ['F', 'Integração 2', 3, ['C', 'D']], ['G', 'Entrega', 2, ['E', 'F']]]
+  },
+  {
     nome: 'Projeto para compressão', modo: 'cpm', unidade: 'd', custoDir: 12000, custoInd: 500,
     acts: [['A', 'Projeto', 6, [], 4, 800], ['B', 'Fundação', 8, ['A'], 5, 900],
     ['C', 'Instalações', 5, ['A'], 3, 400], ['D', 'Estrutura', 7, ['B'], 4, 1100],
@@ -1173,11 +1269,13 @@ function carregarExemplo(i) {
   const st = estadoVazio();
   st.nome = ex.nome; st.modo = ex.modo; st.unidade = ex.unidade || 'd';
   st.custoDir = ex.custoDir || ''; st.custoInd = ex.custoInd || '';
+  if (ex.recLim) { st.recLim = ex.recLim; st.recModo = 'limite'; }
   st.acts = ex.acts.map(a => {
     const o = novoAtv(a[0], a[1]);
     if (ex.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; o.d = a[2][1]; }
     else { o.d = a[2]; o.o = a[2]; o.m = a[2]; o.p = a[2]; }
     const pr = leiaPredsRel(a[3].join(', '), null); o.preds = pr.preds; o.rel = pr.rel;
+    if (ex.rec) o.rec = ex.rec[ex.acts.indexOf(a)];
     if (a.length > 4) { o.dmin = a[4]; o.cc = a[5]; }
     return o;
   });
@@ -1461,6 +1559,7 @@ function irPara(p) {
   const ativa = $('#tabs .aba.on'); if (ativa && ativa.scrollIntoView) ativa.scrollIntoView({ inline: 'center', block: 'nearest' });   /* no celular, o menu rola até a aba ativa */
   $$('.painel').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
   if (p === 'crash') renderCrashTabela();
+  if (p === 'recursos') renderRec();
   if (p === 'pratica' && typeof renderPratica === 'function') renderPratica();
   gravarEstado();
 }
@@ -1480,7 +1579,7 @@ function recalcular() {
     gravarEstado();
     return;
   }
-  renderResultados(); renderRede(); renderGantt(); renderPert();
+  renderResultados(); renderRede(); renderGantt(); renderPert(); renderRec();
   gravarEstado();
 }
 
@@ -1513,8 +1612,11 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'recursos', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
   st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
+  st.recModo = st.recModo === 'limite' ? 'limite' : 'alisar';
+  st.recRegra = ['folga', 'maior', 'recurso'].indexOf(st.recRegra) >= 0 ? st.recRegra : 'folga';
+  st.recLim = (typeof st.recLim === 'number' || typeof st.recLim === 'string') ? st.recLim : '';
   st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
     const x = Object.assign(novoAtv('A'), a);
     x.id = String(x.id == null ? '' : x.id).trim().toUpperCase().slice(0, 6);
@@ -1522,6 +1624,7 @@ function normalizaEstado(novo) {
     x.preds = (Array.isArray(x.preds) ? x.preds : String(x.preds == null ? '' : x.preds).split(/[,;\s]+/))
       .map(p => String(p).trim().toUpperCase()).filter(Boolean);
     const r0 = (x.rel && typeof x.rel === 'object' && !Array.isArray(x.rel)) ? x.rel : {};
+    x.rec = (typeof x.rec === 'number' || typeof x.rec === 'string') ? x.rec : '';
     x.rel = {};
     x.preds.forEach(p => {
       if (!Object.prototype.hasOwnProperty.call(r0, p)) return;
@@ -1657,6 +1760,11 @@ function ligar() {
 
   $('#btnContato').onclick = dlgContato;
   $('#btnMC').onclick = mcRodar;
+  $('#btnRec').onclick = recRodar;
+  $('#recModo').onchange = e => { state.recModo = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
+  $('#recRegra').onchange = e => { state.recRegra = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
+  $('#recLim').oninput = e => { state.recLim = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
+  $('#tblRec').addEventListener('input', e => { const i = e.target.getAttribute('data-rec'); if (i === null || !state.acts[+i]) return; state.acts[+i].rec = e.target.value; renderRec(); gravarEstado(); });
   $('#btnExemploMini').onclick = carregarExemploMini;
   /* lembra se a pessoa fechou o passo a passo */
   const det = $('#comoPreencher');
