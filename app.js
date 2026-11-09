@@ -992,8 +992,10 @@ function corteMinimo(s, dur, dmin, custo) {
     const i = idx.get(n.id);
     const pode = dur.get(n.id) - dmin.get(n.id) > EPS && isFinite(custo.get(n.id));
     liga(i, i + 1, pode ? custo.get(n.id) : GRANDE);
-    if (!n.preds.length) liga(0, i, GRANDE);
-    if (!n.succs.length) liga(i + 1, 1, GRANDE);
+    /* começa o caminho crítico: quem começa no instante 0 (inclusive preso ali por antecipação, com predecessoras) */
+    if (n.ES < EPS) liga(0, i, GRANDE);
+    /* termina o caminho crítico: acaba junto com o projeto, mesmo tendo sucessoras */
+    if (Math.abs(n.EF - s.dur) < EPS) liga(i + 1, 1, GRANDE);
     n.succs.forEach(x => { const m = s.N.get(x); if (m.crit && s.aperta(n.id, x)) liga(i + 1, idx.get(x), GRANDE); });
   });
   let fluxo = 0;
