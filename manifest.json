@@ -1,6 +1,6 @@
 {
-  "name": "Calculadora PERT/CPM — @LMVN 2026",
-  "short_name": "PERT/CPM",
+  "name": "GEO PERT/CPM — @LMVN 2026",
+  "short_name": "GEO PERT/CPM",
   "description": "Caminho crítico, folgas, diagrama de rede, Gantt, probabilidade de prazo e compressão de rede.",
   "start_url": "./index.html",
   "scope": "./",

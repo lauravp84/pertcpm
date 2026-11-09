@@ -29,6 +29,7 @@ const TETO_COMBOS = 4000;
 /* ---------- estado ---------- */
 const novoAtv = (id, nome) => ({ id, nome: nome || '', d: 1, o: 1, m: 1, p: 1, preds: [], dmin: '', cc: '' });
 let state = null, calcOut = null, passo = 3, animando = null;
+let redeLarg = 0;
 let zoomRede = (typeof innerWidth === 'number' && innerWidth < 700) ? 1.1 : 1.4;   /* o diagrama aparece maior; A− e A+ ajustam */
 
 function estadoVazio() {
@@ -112,6 +113,17 @@ function calcular(durOverride) {
     });
     if (state.modo === 'pert' && num(a.p) < num(a.o)) erros.push('Em <b>' + esc(id) + '</b>, o tempo pessimista é menor que o otimista. A ordem esperada é o ≤ m ≤ p.');
     else if (state.modo === 'pert' && (num(a.m) < num(a.o) || num(a.m) > num(a.p))) erros.push('Em <b>' + esc(id) + '</b>, o mais provável (m) precisa ficar entre o otimista (o) e o pessimista (p): o ≤ m ≤ p.');
+    const ehNumero = v => /^\s*[-+]?(R\$)?\s*\d[\d.,]*\s*$/.test(String(v == null ? '' : v)) || /^\s*[-+]?[.,]\d+\s*$/.test(String(v));
+    if (state.modo === 'pert') {
+      [['o', 'otimista'], ['m', 'mais provável'], ['p', 'pessimista']].forEach(par => {
+        const v = a[par[0]];
+        if (String(v == null ? '' : v).trim() === '') erros.push('O tempo ' + par[1] + ' de <b>' + esc(id) + '</b> está em branco. Preencha o, m e p.');
+        else if (!ehNumero(v)) erros.push('O tempo ' + par[1] + ' de <b>' + esc(id) + '</b> não é um número (“' + esc(String(v).slice(0, 12)) + '”). Use só algarismos, por exemplo 4 ou 2,5.');
+      });
+    } else if (!(durOverride && durOverride.has(id))) {
+      if (String(a.d == null ? '' : a.d).trim() === '') erros.push('A duração de <b>' + esc(id) + '</b> está em branco. Informe um número (0 ou mais).');
+      else if (!ehNumero(a.d)) erros.push('A duração de <b>' + esc(id) + '</b> não é um número (“' + esc(String(a.d).slice(0, 12)) + '”). Use só algarismos, por exemplo 4 ou 2,5.');
+    }
     const d = durOverride && durOverride.has(id) ? durOverride.get(id) : durDe(a);
     if (d < 0) erros.push('Duração negativa em <b>' + esc(id) + '</b>. Use um valor igual ou maior que zero.');
     N.set(id, { id, nome: a.nome || '', dur: d, varia: varDe(a), preds: ok, rel: relMap, succs: [], ref: a });
@@ -503,6 +515,7 @@ function renderRede() {
   const hCol = col => col.reduce((t, id) => t + alt(id), 0) + GY * Math.max(0, col.length - 1);
   const altura = PAD * 2 + Math.max.apply(null, cols.map(hCol));
   const larg = PAD * 2 + WF * 2 + GX * 2 + maxC * (NL + GX) - GX;
+  redeLarg = larg;
   const pos = new Map(); let x = PAD;
   cols.forEach((col, k) => {
     const w = (k === 0 || k === maxC + 1) ? WF : NL;
@@ -763,6 +776,18 @@ function montaPassos() {
     if (prox) h += '<button class="bt primario" data-ir="' + prox[0] + '">Próximo passo: ' + (PASSO_PROX[p] || prox[1]) + ' →</button>';
     painel.insertAdjacentHTML('beforeend', h + '</div>');
   });
+}
+
+/* Aviso com um botão de ação (ex.: Desfazer). Fica 8 s. */
+function toastAcao(msg, rotulo, fn) {
+  toast(msg + ' ', true);
+  const el = $('#toast'); if (!el) return;
+  el.style.pointerEvents = 'auto';
+  const b = document.createElement('button');
+  b.textContent = rotulo; b.className = 'bt mini'; b.style.cssText = 'margin-left:10px;background:#F1EEE8;color:#16243B;border-color:#F1EEE8';
+  b.onclick = () => { el.style.opacity = '0'; fn(); };
+  el.appendChild(b);
+  clearTimeout(toastT); toastT = setTimeout(() => { el.style.opacity = '0'; }, 8000);
 }
 
 /* ============================================================
@@ -1406,6 +1431,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
+const VERSAO = 'v27';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
@@ -1630,9 +1656,10 @@ function contarVisita() {
    ============================================================ */
 function irPara(p) {
   state.aba = p;
-  $$('#tabs .aba').forEach(t => t.classList.toggle('on', t.dataset.p === p));
+  $$('#tabs .aba').forEach(t => { const on = t.dataset.p === p; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
   const ativa = $('#tabs .aba.on'); if (ativa && ativa.scrollIntoView) ativa.scrollIntoView({ inline: 'center', block: 'nearest' });   /* no celular, o menu rola até a aba ativa */
   $$('.painel').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
+  const pn = $('#p-' + p); if (pn && document.activeElement && document.activeElement.closest && !document.activeElement.closest('#p-' + p)) { try { pn.focus({ preventScroll: true }); } catch (e) { } }   /* leitor de tela e teclado seguem para o conteúdo */
   if (p === 'crash') renderCrashTabela();
   if (p === 'recursos') renderRec();
   if (p === 'pratica' && typeof renderPratica === 'function') renderPratica();
@@ -1746,6 +1773,18 @@ function ligar() {
     irPara(b.dataset.p);
   });
 
+  $('#tblDados').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+    e.preventDefault();
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const f = e.target.dataset.f, i = +tr.dataset.i;
+    if (i >= state.acts.length - 1) {
+      if (!cabeMais(1)) return;
+      state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular();
+    }
+    const prox = $('#tblDados tr[data-i="' + (i + 1) + '"] input[data-f="' + (f === 'preds' || f === 'nome' ? f : 'id') + '"]') || $('#tblDados tr[data-i="' + (i + 1) + '"] input');
+    if (prox) { prox.focus(); if (prox.select) prox.select(); }
+  });
   $('#tblDados').addEventListener('input', e => {
     const tr = e.target.closest('tr'); if (!tr) return;
     lerCampo(+tr.dataset.i, e.target.dataset.f, e.target.value);
@@ -1774,7 +1813,7 @@ function ligar() {
   $('#btnAdd').onclick = () => { if (!cabeMais(1)) return; state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
   $('#btnAdd5').onclick = () => { if (!cabeMais(5)) return; for (let i = 0; i < 5; i++) state.acts.push(novoAtv(proxId(state.acts))); renderDados(); recalcular(); };
   $('#btnLimpar').onclick = () => abrirDlg('Limpar tudo', '<p>Isso apaga as atividades da tela. Projetos salvos continuam guardados.</p>',
-    [['Cancelar', () => $('#dlg').close()], ['Apagar', () => { carregar(estadoVazio()); $('#dlg').close(); }, true]]);
+    [['Cancelar', () => $('#dlg').close()], ['Apagar', () => { const antes = JSON.stringify(state); carregar(estadoVazio()); $('#dlg').close(); toastAcao('Atividades apagadas.', 'Desfazer', () => { carregar(normalizaEstado(JSON.parse(antes))); toast('Atividades restauradas.'); }); }, true]]);
   $('#btnColar').onclick = () => { const p = $('#painelColar'); p.hidden = !p.hidden; if (!p.hidden) $('#taColar').focus(); };
   $('#btnImportar').onclick = () => colar($('#taColar').value, $('#chkSubstituir').checked);
 
@@ -1836,7 +1875,13 @@ function ligar() {
   $('#btnContato').onclick = dlgContato;
   $('#btnMC').onclick = mcRodar;
   montaPassos(); ligaTips();
-  $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.7, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
+  const vs = $('#versao'); if (vs) vs.textContent = VERSAO;
+  /* seta à direita do menu enquanto houver abas escondidas */
+  const nav = $('nav.abas'), tabs = $('#tabs');
+  const sinal = () => { if (nav && tabs) nav.classList.toggle('mais', tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 6); };
+  if (tabs) { tabs.addEventListener('scroll', sinal, { passive: true }); addEventListener('resize', sinal); setTimeout(sinal, 50); }
+  $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.3, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
+  $('#btnZmAjustar').onclick = () => { const w = $('#stageRede').clientWidth - 2; if (redeLarg > 0 && w > 0) { zoomRede = Math.max(0.3, Math.min(2.4, +(w / redeLarg).toFixed(2))); renderRede(); } };
   $('#btnZmMais').onclick = () => { zoomRede = Math.min(2.4, +(zoomRede + 0.2).toFixed(2)); renderRede(); };
   $('#btnRec').onclick = recRodar;
   $('#recModo').onchange = e => { state.recModo = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
@@ -1861,7 +1906,7 @@ function ligar() {
   });
 
   /* botões de avanço entre os passos (data-ir="aba") */
-  document.addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) { irPara(b.dataset.ir); scrollTo(0, 0); } });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) { irPara(b.dataset.ir); scrollTo(0, 0); if (b.dataset.foco) setTimeout(() => { const f = $(b.dataset.foco); if (f) { f.focus(); if (f.select) f.select(); } }, 60); } });
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); dlgSalvar(); }
   });

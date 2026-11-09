@@ -58,10 +58,13 @@ select.bt-topo{padding-right:8px}
 .resumo .fim{margin-left:auto;text-align:right}
 
 /* ---------- nav ---------- */
-nav.abas{background:var(--superficie);border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:40}
+nav.abas{background:var(--superficie);border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:40;position:sticky}
+nav.abas.mais::after{content:"›";position:absolute;right:0;top:0;bottom:0;width:46px;display:grid;place-items:center;font-size:26px;color:var(--navy);background:linear-gradient(90deg,rgba(251,249,246,0),var(--superficie) 45%);pointer-events:none}
+.painel:focus{outline:none}
+.aba:focus-visible{outline:2px solid var(--navy);outline-offset:-2px}
 .nav-in{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 12px}
 .nav-in::-webkit-scrollbar{display:none}
-.aba{border:0;background:transparent;color:#5C6A80;padding:12px 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent;min-height:44px}
+.aba{border:0;background:transparent;color:#5C6A80;padding:12px 11px;font-size:13.5px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent;min-height:44px}
 .aba:hover{background:var(--papel);color:var(--tinta)}
 .aba.on{color:var(--navy);border-bottom-color:var(--navy)}
 .aba .n{width:21px;height:21px;border:1px solid currentColor;border-radius:999px;display:grid;place-items:center;font-family:var(--mono);font-size:12px}
@@ -194,6 +197,7 @@ select.pr{width:96px;text-align:left}
 .mk.er{color:var(--critico);font-weight:700}
 .so-desk{display:inline}
 .topo-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (max-width:1400px){.aba .so-desk{display:none}}
 @media (max-width:640px){
   .topo-in{padding:8px 12px;gap:8px}
   .marca .selo{width:28px;height:28px;font-size:12px}
@@ -308,19 +312,19 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </div>
 
 <nav class="abas noprint">
-  <div class="nav-in" id="tabs">
-    <button class="aba on" data-p="inicio"><span class="n">0</span>Início</button>
-    <button class="aba" data-p="dados"><span class="n">1</span>Dados</button>
-    <button class="aba" data-p="calend"><span class="n">2</span>Calendário e custos</button>
-    <button class="aba" data-p="result"><span class="n">3</span>Resultados</button>
-    <button class="aba" data-p="rede"><span class="n">4</span>Diagrama de rede</button>
-    <button class="aba" data-p="gantt"><span class="n">5</span>Gantt</button>
-    <button class="aba" data-p="pert"><span class="n">6</span>Probabilidade</button>
-    <button class="aba" data-p="crash"><span class="n">7</span>Compressão</button>
-    <button class="aba" data-p="recursos"><span class="n">8</span>Recursos</button>
-    <button class="aba" data-p="pratica"><span class="n">9</span>Praticar</button>
-    <button class="aba" data-p="guia"><span class="n">?</span>Guia</button>
-    <button class="aba" data-p="contato"><span class="n">@</span>Contato</button>
+  <div class="nav-in" id="tabs" role="tablist" aria-label="Passos da calculadora">
+    <button class="aba on" data-p="inicio" role="tab" aria-selected="true" aria-controls="p-inicio"><span class="n">0</span>Início</button>
+    <button class="aba" data-p="dados" role="tab" aria-selected="false" aria-controls="p-dados"><span class="n">1</span>Dados</button>
+    <button class="aba" data-p="calend" role="tab" aria-selected="false" aria-controls="p-calend"><span class="n">2</span>Calendário<span class="so-desk"> e custos</span></button>
+    <button class="aba" data-p="result" role="tab" aria-selected="false" aria-controls="p-result"><span class="n">3</span>Resultados</button>
+    <button class="aba" data-p="rede" role="tab" aria-selected="false" aria-controls="p-rede"><span class="n">4</span>Rede</button>
+    <button class="aba" data-p="gantt" role="tab" aria-selected="false" aria-controls="p-gantt"><span class="n">5</span>Gantt</button>
+    <button class="aba" data-p="pert" role="tab" aria-selected="false" aria-controls="p-pert"><span class="n">6</span>Probabilidade</button>
+    <button class="aba" data-p="crash" role="tab" aria-selected="false" aria-controls="p-crash"><span class="n">7</span>Compressão</button>
+    <button class="aba" data-p="recursos" role="tab" aria-selected="false" aria-controls="p-recursos"><span class="n">8</span>Recursos</button>
+    <button class="aba" data-p="pratica" role="tab" aria-selected="false" aria-controls="p-pratica"><span class="n">9</span>Praticar</button>
+    <button class="aba" data-p="guia" role="tab" aria-selected="false" aria-controls="p-guia"><span class="n">?</span>Guia</button>
+    <button class="aba" data-p="contato" role="tab" aria-selected="false" aria-controls="p-contato"><span class="n">@</span>Contato</button>
   </div>
 </nav>
 
@@ -328,14 +332,14 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <div id="avisos"></div>
 
 <!-- ============ INÍCIO ============ -->
-<section class="painel on" id="p-inicio">
+<section class="painel on" id="p-inicio" role="tabpanel" tabindex="-1">
   <div class="hero">
     <div>
       <div class="rot">Gestão de projetos · ferramenta de estudo</div>
       <h2 class="tit">GEO <b>PERT/CPM</b></h2>
       <p class="sub">Descubra o caminho crítico, as folgas e a chance de cumprir o prazo do seu projeto, com o cálculo explicado passo a passo.</p>
       <div class="acoes-h noprint">
-        <button class="bt primario" data-ir="dados" style="padding:13px 22px">Começar →</button>
+        <button class="bt primario" data-ir="dados" data-foco="#tblDados input.cod" style="padding:13px 22px">Começar →</button>
         <button class="bt" id="btnHeroEx" style="padding:13px 22px">Ver um exemplo pronto</button>
       </div>
       <ul class="chips" aria-label="Recursos da calculadora"><li>CPM</li><li>PERT</li><li>Relações PDM</li><li>Gantt</li><li>Monte Carlo</li><li>Recursos</li></ul>
@@ -408,7 +412,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="card" style="margin-top:18px"><div class="card-corpo">
     <h3 style="font-size:21px;margin-bottom:6px">Os passos da calculadora</h3>
     <p class="hint" style="margin:0 0 6px">Siga a ordem das abas, da esquerda para a direita. Só o passo 1 é obrigatório: os outros mostram o que o cálculo descobriu.</p>
-    <div class="passos-grade"><button class="passo-card" data-ir="dados"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 18h24M12 6v20"/></svg><span class="num">PASSO 1</span><b>Dados</b><span class="d">Escolha CPM ou PERT e preencha a tabela de atividades.</span></button><button class="passo-card opc" data-ir="calend"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="24" height="21" rx="2"/><path d="M4 14h24M10 4v6M22 4v6"/><circle cx="12" cy="21" r="1.5"/><circle cx="20" cy="21" r="1.5"/></svg><span class="num">PASSO 2</span><b>Calendário e custos</b><span class="d">Data de início, unidade de tempo, custos e notação.</span></button><button class="passo-card" data-ir="result"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M9 12h8M9 17h8M9 22h8" /><path d="M21 17l2 2 4-4"/></svg><span class="num">PASSO 3</span><b>Resultados</b><span class="d">Datas mais cedo e mais tarde, folgas e caminho crítico.</span></button><button class="passo-card" data-ir="rede"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="7" height="8" rx="1"/><rect x="13" y="4" width="7" height="8" rx="1"/><rect x="13" y="20" width="7" height="8" rx="1"/><rect x="23" y="12" width="7" height="8" rx="1"/><path d="M10 15l3-7M10 17l3 7M20 8l3 6M20 24l3-6"/></svg><span class="num">PASSO 4</span><b>Diagrama de rede</b><span class="d">O projeto em caixas e setas, com o cálculo passo a passo.</span></button><button class="passo-card" data-ir="gantt"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M10 16h14M18 24h10"/><path d="M4 4v24" stroke-width="1.5"/></svg><span class="num">PASSO 5</span><b>Gantt</b><span class="d">As atividades no tempo, com a folga de cada uma.</span></button><button class="passo-card" data-ir="pert"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 26C10 26 11 6 16 6s6 20 13 20"/><path d="M3 26h26" stroke-width="1.5"/></svg><span class="num">PASSO 6</span><b>Probabilidade</b><span class="d">No modo PERT: chance de cumprir um prazo e simulação.</span></button><button class="passo-card opc" data-ir="crash"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h9M9 11l5 5-5 5M29 16h-9M23 11l-5 5 5 5"/></svg><span class="num">PASSO 7</span><b>Compressão</b><span class="d">Quanto custa encurtar o projeto e o prazo mais barato.</span></button><button class="passo-card opc" data-ir="recursos"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 27V17M12 27V8M19 27V13M26 27V20M3 27h26"/></svg><span class="num">PASSO 8</span><b>Recursos</b><span class="d">Carga de pessoas ou máquinas e como nivelar.</span></button><button class="passo-card" data-ir="pratica"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M10 16l4 4 8-9"/></svg><span class="num">PASSO 9</span><b>Praticar</b><span class="d">Exercícios para calcular à mão, com correção e gabarito.</span></button></div>
+    <div class="passos-grade"><button class="passo-card" data-ir="dados" data-foco="#tblDados input.cod"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 18h24M12 6v20"/></svg><span class="num">PASSO 1</span><b>Dados</b><span class="d">Escolha CPM ou PERT e preencha a tabela de atividades.</span></button><button class="passo-card opc" data-ir="calend"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="24" height="21" rx="2"/><path d="M4 14h24M10 4v6M22 4v6"/><circle cx="12" cy="21" r="1.5"/><circle cx="20" cy="21" r="1.5"/></svg><span class="num">PASSO 2</span><b>Calendário e custos</b><span class="d">Data de início, unidade de tempo, custos e notação.</span></button><button class="passo-card" data-ir="result"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M9 12h8M9 17h8M9 22h8" /><path d="M21 17l2 2 4-4"/></svg><span class="num">PASSO 3</span><b>Resultados</b><span class="d">Datas mais cedo e mais tarde, folgas e caminho crítico.</span></button><button class="passo-card" data-ir="rede"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="7" height="8" rx="1"/><rect x="13" y="4" width="7" height="8" rx="1"/><rect x="13" y="20" width="7" height="8" rx="1"/><rect x="23" y="12" width="7" height="8" rx="1"/><path d="M10 15l3-7M10 17l3 7M20 8l3 6M20 24l3-6"/></svg><span class="num">PASSO 4</span><b>Diagrama de rede</b><span class="d">O projeto em caixas e setas, com o cálculo passo a passo.</span></button><button class="passo-card" data-ir="gantt"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M10 16h14M18 24h10"/><path d="M4 4v24" stroke-width="1.5"/></svg><span class="num">PASSO 5</span><b>Gantt</b><span class="d">As atividades no tempo, com a folga de cada uma.</span></button><button class="passo-card" data-ir="pert"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 26C10 26 11 6 16 6s6 20 13 20"/><path d="M3 26h26" stroke-width="1.5"/></svg><span class="num">PASSO 6</span><b>Probabilidade</b><span class="d">No modo PERT: chance de cumprir um prazo e simulação.</span></button><button class="passo-card opc" data-ir="crash"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h9M9 11l5 5-5 5M29 16h-9M23 11l-5 5 5 5"/></svg><span class="num">PASSO 7</span><b>Compressão</b><span class="d">Quanto custa encurtar o projeto e o prazo mais barato.</span></button><button class="passo-card opc" data-ir="recursos"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 27V17M12 27V8M19 27V13M26 27V20M3 27h26"/></svg><span class="num">PASSO 8</span><b>Recursos</b><span class="d">Carga de pessoas ou máquinas e como nivelar.</span></button><button class="passo-card" data-ir="pratica"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M10 16l4 4 8-9"/></svg><span class="num">PASSO 9</span><b>Praticar</b><span class="d">Exercícios para calcular à mão, com correção e gabarito.</span></button></div>
   </div></div>
   <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
     <button class="bt primario" data-ir="dados" style="padding:13px 22px">Começar: preencher as atividades →</button>
@@ -416,7 +420,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 1 · DADOS ============ -->
-<section class="painel" id="p-dados">
+<section class="painel" id="p-dados" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>1 · Atividades do projeto</h2>
     <div class="acoes noprint">
@@ -430,7 +434,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 
   <div class="card">
     <div class="rolar"><table class="tab min560" id="tblDados"></table></div>
-    <p class="hint" style="margin:0;padding:10px 12px 12px;border-top:1px solid var(--borda-int)"><b>Predecessoras:</b> são as atividades que precisam terminar antes desta. Com mais de uma, separe por <b>vírgula</b>, por exemplo <span class="mono">A, B</span>. Deixe em branco se a atividade começa o projeto. Se digitar um traço (<span class="mono">A-B</span>), a calculadora troca por vírgula. <b>Relação diferente de término-início?</b> Escreva o tipo e o atraso entre parênteses: <span class="mono">A(II+2)</span> (começa 2 períodos depois que A começa), <span class="mono">A(TT)</span>, <span class="mono">A(IT)</span> ou só o atraso <span class="mono">A(+1)</span>. Veja a explicação na aba Guia.</p>
+    <p class="hint" style="margin:0;padding:10px 12px 12px;border-top:1px solid var(--borda-int)"><b>Predecessoras:</b> códigos das atividades que vêm antes, separados por vírgula (<span class="mono">A, B</span>). Em branco = começa o projeto. Relação especial ou atraso: <span class="mono">A(II+2)</span>, <span class="mono">A(+1)</span> (veja o Guia). <b>Enter</b> na última linha cria uma nova.</p>
     <div class="barra-acoes noprint">
       <button class="bt primario" id="btnAdd">+ Atividade</button>
       <button class="bt" id="btnAdd5">+ 5 linhas</button>
@@ -455,7 +459,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ CALENDÁRIO E CUSTOS ============ -->
-<section class="painel" id="p-calend">
+<section class="painel" id="p-calend" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Calendário e custos <span class="olho">opcional</span></h2>
     <p class="apoio">Nada aqui é obrigatório: o cálculo funciona sem estas informações. Elas mudam como os resultados aparecem e liberam a análise de compressão.</p>
@@ -484,7 +488,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 2 · RESULTADOS ============ -->
-<section class="painel" id="p-result">
+<section class="painel" id="p-result" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Quadro de cálculo</h2>
     <div class="acoes noprint">
@@ -506,7 +510,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 3 · REDE ============ -->
-<section class="painel" id="p-rede">
+<section class="painel" id="p-rede" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Diagrama de rede (AON)</h2>
     <div class="acoes noprint">
@@ -517,6 +521,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       </div>
       <button class="bt mini" id="btnZmMenos" aria-label="Diminuir o desenho" title="Diminuir o desenho">A−</button>
       <button class="bt mini" id="btnZmMais" aria-label="Aumentar o desenho" title="Aumentar o desenho">A+</button>
+      <button class="bt mini" id="btnZmAjustar" title="Caber na largura da tela">Ajustar</button>
       <button class="bt mini" id="btnPlay">▶ Animar</button>
       <button class="bt mini" id="btnPNGrede">PNG</button>
     </div>
@@ -533,7 +538,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 4 · GANTT ============ -->
-<section class="painel" id="p-gantt">
+<section class="painel" id="p-gantt" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Gráfico de Gantt</h2>
     <div class="acoes noprint">
@@ -555,7 +560,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 5 · PROBABILIDADE ============ -->
-<section class="painel" id="p-pert">
+<section class="painel" id="p-pert" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Probabilidade de prazo</h2>
     <p class="apoio" id="pertApoio">A duração do projeto vira uma distribuição aproximadamente normal em torno do caminho crítico.</p>
@@ -607,7 +612,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ 6 · COMPRESSÃO ============ -->
-<section class="painel" id="p-crash">
+<section class="painel" id="p-crash" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Compressão da rede</h2>
     <p class="apoio">Informe a duração mínima possível e o custo por período acelerado. O algoritmo comprime sempre a alternativa mais barata que cobre todos os caminhos críticos.</p>
@@ -641,7 +646,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <!-- ============ PRATICAR ============ -->
 
 <!-- ============ RECURSOS ============ -->
-<section class="painel" id="p-recursos">
+<section class="painel" id="p-recursos" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Recursos <span class="olho">opcional</span></h2>
     <p class="apoio">Informe quantas unidades de um recurso (pessoas, máquinas, horas) cada atividade usa <b>por período</b>. A calculadora mostra a carga ao longo do projeto e nivela quando há excesso.</p>
@@ -659,7 +664,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div id="recSaida" style="margin-top:18px"></div>
 </section>
 
-<section class="painel" id="p-pratica">
+<section class="painel" id="p-pratica" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Praticar</h2>
     <p class="apoio">Calcule à mão e confira. Escolha um exercício, preencha a tabela de respostas e clique em Conferir. A correção usa o mesmo motor da calculadora, então vale para qualquer rede.</p>
@@ -676,7 +681,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ GUIA ============ -->
-<section class="painel" id="p-guia">
+<section class="painel" id="p-guia" role="tabpanel" tabindex="-1">
   <div class="sec"><h2>Como o cálculo funciona</h2></div>
   <div class="guia">
     <div class="card"><h3>1 · Caminho de ida (<i>forward pass</i>)</h3>
@@ -735,7 +740,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </section>
 
 <!-- ============ CONTATO ============ -->
-<section class="painel" id="p-contato">
+<section class="painel" id="p-contato" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Contato</h2>
     <p class="apoio">Dúvida sobre o cálculo, sugestão de melhoria ou achou algum erro? Me escreva — respondo.</p>
@@ -752,6 +757,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="rodape-in">
     <span>GEO PERT/CPM</span>
     <span class="mono">@LMVN 2026</span>
+    <span class="mono" id="versao" title="Versão publicada"></span>
     <span class="mono" id="visitas" hidden><b></b><span id="visitasRot"> visitas</span></span>
     <span class="dir">Roda no navegador, <i>offline</i>. Os dados ficam no seu aparelho.</span>
   </div>
