@@ -21,7 +21,7 @@
 <script src="pertcpm-engine.js"></script>
 <script src="pertcpm-textos.js"></script>
 <script src="novo-extras.js"></script>
-<style>body{margin:0;background:#F1EEE8;color:#16243B;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}a{color:#1A3A6B;text-decoration:none}a:hover{color:#B3392C}input,button,select,textarea{font:inherit;color:inherit}input:focus,select:focus,textarea:focus{outline:2px solid #1A3A6B;outline-offset:-1px}button{cursor:pointer}</style>
+<style>body{margin:0;background:#F1EEE8;color:#16243B;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}a{color:#1A3A6B;text-decoration:none}a:hover{color:#B3392C}input,button,select,textarea{font:inherit;color:inherit}input:focus,select:focus,textarea:focus{outline:2px solid #1A3A6B;outline-offset:-1px}button{cursor:pointer}@media (max-width:760px){.passos{overflow-x:auto;scrollbar-width:none}.passos button{flex:0 0 auto!important;padding-right:16px!important}.passos button span:last-child{white-space:nowrap}}</style>
 </helmet>
 <div style="min-height:100vh;display:flex;flex-direction:column;zoom:{{ zoom }}">
   <header style="background:#1A3A6B;color:#F1EEE8">
@@ -53,7 +53,7 @@
 
   <div style="max-width:1240px;width:100%;margin:0 auto;padding:0 clamp(18px,4vw,40px);box-sizing:border-box">
     <sc-if value="{{ showStepNav }}" hint-placeholder-val="{{ true }}">
-      <nav style="display:flex;gap:4px;padding:18px 0 0;border-bottom:1px solid rgba(22,36,59,.14)">
+      <nav class="passos" style="display:flex;gap:4px;padding:18px 0 0;border-bottom:1px solid rgba(22,36,59,.14)">
         <sc-for list="{{ steps }}" as="s" hint-placeholder-count="6">
           <button onClick="{{ s.go }}" disabled="{{ s.disabled }}" style="flex:1;min-width:0;appearance:none;background:none;border:0;padding:0 0 12px;text-align:left;border-bottom:{{ s.bar }};margin-bottom:-1px;display:flex;align-items:baseline;gap:9px;opacity:{{ s.opacity }}">
             <span style="font-family:'IBM Plex Mono',monospace;font-size:22px;line-height:1;color:{{ s.numColor }}">{{ s.n }}</span>
