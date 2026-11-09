@@ -334,7 +334,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 
   <div class="card">
     <div class="rolar"><table class="tab min560" id="tblDados"></table></div>
-    <p class="hint" style="margin:0;padding:10px 12px 12px;border-top:1px solid var(--borda-int)"><b>Predecessoras:</b> são as atividades que precisam terminar antes desta. Com mais de uma, separe por <b>vírgula</b>, por exemplo <span class="mono">A, B</span>. Deixe em branco se a atividade começa o projeto. Se digitar um traço (<span class="mono">A-B</span>), a calculadora troca por vírgula.</p>
+    <p class="hint" style="margin:0;padding:10px 12px 12px;border-top:1px solid var(--borda-int)"><b>Predecessoras:</b> são as atividades que precisam terminar antes desta. Com mais de uma, separe por <b>vírgula</b>, por exemplo <span class="mono">A, B</span>. Deixe em branco se a atividade começa o projeto. Se digitar um traço (<span class="mono">A-B</span>), a calculadora troca por vírgula. <b>Relação diferente de término-início?</b> Escreva o tipo e o atraso entre parênteses: <span class="mono">A(II+2)</span> (começa 2 períodos depois que A começa), <span class="mono">A(TT)</span>, <span class="mono">A(IT)</span> ou só o atraso <span class="mono">A(+1)</span>. Veja a explicação na aba Guia.</p>
     <div class="barra-acoes noprint">
       <button class="bt primario" id="btnAdd">+ Atividade</button>
       <button class="bt" id="btnAdd5">+ 5 linhas</button>
@@ -572,6 +572,29 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <div class="conv"><h3 style="font-size:19px;margin-bottom:6px">Convenção de datas</h3>
       <p>Os valores <span class="sg" data-s="ES"></span>/<span class="sg" data-s="EF"></span>/<span class="sg" data-s="LS"></span>/<span class="sg" data-s="LF"></span> estão em <i>fim de período</i>: uma atividade de 5 dias que começa no instante 0 termina no instante 5. No Gantt, o dia 1 do calendário corresponde ao instante 0.</p></div>
   </div>
+
+  <div class="card"><div class="card-corpo">
+    <h3>Relações entre atividades (PDM)</h3>
+    <p>No cálculo clássico, uma atividade só começa quando a anterior <b>termina</b> (término-início, TI). Na prática, muitas começam antes, com as anteriores ainda em andamento. O diagrama de precedência (PDM, usado no MS Project e no PMBOK) descreve isso com quatro tipos de relação e um <b>atraso</b> (<i>lag</i>) opcional, positivo ou negativo.</p>
+    <dl class="gloss">
+      <dt>TI · término-início</dt><dd>A atividade só começa quando a predecessora termina. É o padrão. Escreva só o código: <span class="mono">A</span>.</dd>
+      <dt>II · início-início</dt><dd>As duas podem andar juntas: a atividade começa depois que a predecessora <b>começa</b>. Ex.: <span class="mono">A(II+2)</span> = começa 2 períodos depois do início de A.</dd>
+      <dt>TT · término-término</dt><dd>A atividade só pode terminar depois que a predecessora termina. Ex.: <span class="mono">A(TT+1)</span>.</dd>
+      <dt>IT · início-término</dt><dd>A atividade só pode terminar depois que a predecessora começa. É rara. Ex.: <span class="mono">A(IT)</span>.</dd>
+      <dt>Atraso (<i>lag</i>)</dt><dd>Espera obrigatória entre os eventos (concretar, depois esperar a cura). Com sinal negativo vira antecipação. Ex.: <span class="mono">A(+2)</span> é término-início com 2 períodos de espera; <span class="mono">A(-1)</span> deixa começar 1 período antes de A terminar.</dd>
+    </dl>
+    <p>Misture como quiser na coluna Predecessoras: <span class="mono">A, B(II+2), C(TT)</span>. A abreviação em inglês (FS, SS, FF, SF) também é aceita. No diagrama de rede, a relação aparece escrita sobre a seta. Para ver tudo funcionando, escolha o exemplo “Relações PDM (II, TT e atraso)” em Exemplos.</p>
+    <p class="hint">Limites: a aba Compressão só funciona com relações de término-início (com ou sem atraso), e o exercício “Meu projeto” em Praticar também.</p>
+  </div></div>
+
+  <div class="card"><div class="card-corpo">
+    <h3>De onde vêm o CPM e o PERT, e o que ficou de fora</h3>
+    <dl class="gloss">
+      <dt>CPM (<i>Critical Path Method</i>)</dt><dd>Criado entre 1957 e 1959 por Kelley e Walker, na DuPont, para obras e manutenção industrial. Parte de atividades conhecidas, com duração e custo bem estimados: uma duração só por atividade. Permite analisar a troca entre custo e prazo (compressão).</dd>
+      <dt>PERT (<i>Program Evaluation and Review Technique</i>)</dt><dd>Criado em 1958 pela Marinha dos EUA, no projeto do míssil Polaris, para atividades inéditas e incertas. Pede três estimativas (otimista, mais provável e pessimista). A duração esperada é te = (o + 4m + p) / 6 e o desvio é σ = (p − o) / 6; somando os desvios do caminho crítico, estima-se a chance de cumprir um prazo.</dd>
+      <dt>Fora desta calculadora</dt><dd>Simulação de Monte Carlo (no lugar da aproximação normal do PERT), GERT (ramificações probabilísticas), nivelamento de recursos e corrente crítica. São extensões que exigem dados que um exercício de sala raramente tem.</dd>
+    </dl>
+  </div></div>
 </section>
 
 <!-- ============ CONTATO ============ -->

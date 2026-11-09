@@ -28,7 +28,7 @@ function prDePronto(id) {
 
 function prDeDados() {
   const c = calcOut;
-  if (!c || !c.acts || c.acts.length < 2 || (c.erros && c.erros.length)) return null;
+  if (!c || !c.acts || c.acts.length < 2 || (c.erros && c.erros.length) || c.temRelEsp || c.temAtraso) return null;
   return {
     titulo: 'Meu projeto (aba Dados)', modo: state.modo, unidade: state.unidade,
     acts: c.acts.map(n => {
@@ -305,7 +305,7 @@ function iniciaPratica() {
   sel.addEventListener('change', () => {
     const v = sel.value;
     if (v === '__atual' || v === '') return;
-    if (v === '__dados') { const e = prDeDados(); if (!e) { alerta('O projeto da aba Dados precisa ter pelo menos 2 atividades e nenhum erro para virar exercício.'); renderPratica(); return; } prAbre(e); return; }
+    if (v === '__dados') { const e = prDeDados(); if (!e) { alerta('O projeto da aba Dados precisa ter pelo menos 2 atividades, nenhum erro e só relações de término-início, sem atraso, para virar exercício.'); renderPratica(); return; } prAbre(e); return; }
     prAbre(prDePronto(v));
   });
   $('#prGerar').addEventListener('click', () => prAbre(prGerar($('#prNivel').value, $('#prTipo').value)));

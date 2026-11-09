@@ -68,6 +68,13 @@ function aplicaNotacao() {
 /* ============================================================
    MOTOR DE CÁLCULO
    ============================================================ */
+const REL0 = { t: 'TI', lag: 0 };
+function leRel(a, p) {
+  const r = a.rel && Object.prototype.hasOwnProperty.call(a.rel, p) ? a.rel[p] : null;
+  if (!r) return REL0;
+  const t = REL_ALIAS[String(r.t).toUpperCase()], lag = Number(r.lag);
+  return { t: t || 'TI', lag: isFinite(lag) && Math.abs(lag) <= 1e6 ? lag : 0 };
+}
 function durDe(a) {
   if (state.modo === 'pert') return (num(a.o) + 4 * num(a.m) + num(a.p)) / 6;
   return num(a.d);
@@ -96,17 +103,17 @@ function calcular(durOverride) {
   const N = new Map();
   for (const [id, a] of mapa) {
     const preds = (a.preds || []).map(p => String(p).trim().toUpperCase()).filter(Boolean);
-    const ok = [];
+    const ok = [], relMap = new Map();
     preds.forEach(p => {
       if (p === id) erros.push('<b>' + esc(id) + '</b> não pode ser predecessora de si mesma. Tire ' + esc(id) + ' da lista de predecessoras de ' + esc(id) + '.');
       else if (!mapa.has(p)) erros.push('<b>' + esc(id) + '</b> depende de <b>' + esc(p) + '</b>, mas não existe atividade com esse código. Códigos existentes: ' + Array.from(mapa.keys()).map(esc).join(', ') + '. Corrija a predecessora de ' + esc(id) + ' ou crie a atividade ' + esc(p) + '.');
-      else if (ok.indexOf(p) < 0) ok.push(p);
+      else if (ok.indexOf(p) < 0) { ok.push(p); relMap.set(p, leRel(a, p)); }
     });
     if (state.modo === 'pert' && num(a.p) < num(a.o)) erros.push('Em <b>' + esc(id) + '</b>, o tempo pessimista é menor que o otimista. A ordem esperada é o ≤ m ≤ p.');
     else if (state.modo === 'pert' && (num(a.m) < num(a.o) || num(a.m) > num(a.p))) erros.push('Em <b>' + esc(id) + '</b>, o mais provável (m) precisa ficar entre o otimista (o) e o pessimista (p): o ≤ m ≤ p.');
     const d = durOverride && durOverride.has(id) ? durOverride.get(id) : durDe(a);
     if (d < 0) erros.push('Duração negativa em <b>' + esc(id) + '</b>. Use um valor igual ou maior que zero.');
-    N.set(id, { id, nome: a.nome || '', dur: d, varia: varDe(a), preds: ok, succs: [], ref: a });
+    N.set(id, { id, nome: a.nome || '', dur: d, varia: varDe(a), preds: ok, rel: relMap, succs: [], ref: a });
   }
   for (const n of N.values()) n.preds.forEach(p => { const x = N.get(p); if (x) x.succs.push(n.id); });
 
@@ -129,23 +136,37 @@ function calcular(durOverride) {
     return { erros, avisos, acts: [], caminhos: [], caminhosCriticos: [], criticas: [], critSeq: [], dur: 0, ciclo: true };
   }
 
+  /* Cada ligação p → s vira uma restrição ES(s) ≥ ES(p) + w. Com término-início sem atraso, w = duração de p
+     (o cálculo clássico). II: w = atraso. TT: w = dur(p) + atraso − dur(s). IT: w = atraso − dur(s). */
+  const peso = (p, s) => {
+    const r = s.rel.get(p.id) || REL0;
+    switch (r.t) {
+      case 'II': return r.lag;
+      case 'TT': return p.dur + r.lag - s.dur;
+      case 'IT': return r.lag - s.dur;
+      default: return p.dur + r.lag;
+    }
+  };
+  const aperta = (pid, sid) => { const p = N.get(pid), s = N.get(sid); return Math.abs(s.ES - p.ES - peso(p, s)) < EPS; };
   ordem.forEach(id => {
     const n = N.get(id);
-    n.ES = n.preds.length ? Math.max.apply(null, n.preds.map(p => N.get(p).EF)) : 0;
+    n.ES = Math.max.apply(null, [0].concat(n.preds.map(p => N.get(p).ES + peso(N.get(p), n))));
     n.EF = n.ES + n.dur;
   });
   const dur = N.size ? Math.max.apply(null, Array.from(N.values()).map(n => n.EF)) : 0;
 
   for (let i = ordem.length - 1; i >= 0; i--) {
     const n = N.get(ordem[i]);
-    n.LF = n.succs.length ? Math.min.apply(null, n.succs.map(s => N.get(s).LS)) : dur;
-    n.LS = n.LF - n.dur;
+    n.LS = Math.min.apply(null, [dur - n.dur].concat(n.succs.map(s => N.get(s).LS - peso(n, N.get(s)))));
+    n.LF = n.LS + n.dur;
   }
   N.forEach(n => {
     n.FT = n.LS - n.ES;
-    n.FL = (n.succs.length ? Math.min.apply(null, n.succs.map(s => N.get(s).ES)) : dur) - n.EF;
+    n.FL = Math.min.apply(null, [dur - n.EF].concat(n.succs.map(s => N.get(s).ES - n.ES - peso(n, N.get(s)))));
     n.crit = Math.abs(n.FT) < EPS;
   });
+  const temRelEsp = Array.from(N.values()).some(n => Array.from(n.rel.values()).some(r => r.t !== 'TI'));
+  const temAtraso = Array.from(N.values()).some(n => Array.from(n.rel.values()).some(r => r.lag));
 
   const iniciais = ordem.filter(id => !N.get(id).preds.length);
   const finais = ordem.filter(id => !N.get(id).succs.length);
@@ -158,16 +179,17 @@ function calcular(durOverride) {
      que tem teto — que se acha o caminho crítico, o sigma e a compressão. Toda atividade
      crítica que não é a última tem uma sucessora crítica começando no seu EF, então a
      busca sempre chega ao fim. */
-  const critSucc = id => N.get(id).succs.filter(s => N.get(s).crit && Math.abs(N.get(id).EF - N.get(s).ES) < EPS);
+  const critSucc = id => N.get(id).succs.filter(s => N.get(s).crit && aperta(id, s));
   const caminhosCriticos = []; let critEstourou = false;
   const dfsC = (id, acum, soma, vari) => {
     if (caminhosCriticos.length >= TETO_CAMINHOS) { critEstourou = true; return; }
-    const n = N.get(id); acum.push(id); soma += n.dur; vari += n.varia;
-    if (!n.succs.length) caminhosCriticos.push({ ids: acum.slice(), dur: soma, varia: vari, crit: true });
-    else critSucc(id).forEach(s => dfsC(s, acum, soma, vari));
+    const n = N.get(id); acum.push(id); vari += n.varia;
+    const cs = critSucc(id);
+    if (!cs.length) caminhosCriticos.push({ ids: acum.slice(), dur: soma + n.dur, varia: vari, crit: true });
+    else cs.forEach(s => dfsC(s, acum, soma + peso(n, N.get(s)), vari));
     acum.pop();
   };
-  iniciais.filter(id => N.get(id).crit).forEach(id => dfsC(id, [], 0, 0));
+  ordem.filter(id => N.get(id).crit && !N.get(id).preds.some(p => N.get(p).crit && aperta(p, id))).forEach(id => dfsC(id, [], 0, 0));
 
   /* Caminho crítico de maior variância (é dele que sai o sigma), por programação
      dinâmica: exato mesmo que existam milhares de caminhos críticos. */
@@ -179,12 +201,12 @@ function calcular(durOverride) {
       let b = 0, de = null;
       n.preds.forEach(p => {
         const pn = N.get(p);
-        if (pn.crit && Math.abs(pn.EF - n.ES) < EPS && melhor.has(p) && (de === null || melhor.get(p) > b)) { b = melhor.get(p); de = p; }
+        if (pn.crit && aperta(p, id) && melhor.has(p) && (de === null || melhor.get(p) > b)) { b = melhor.get(p); de = p; }
       });
       melhor.set(id, b + n.varia); veio.set(id, de);
     });
     let ult = null;
-    melhor.forEach((v, id) => { if (!N.get(id).succs.length && (ult === null || v > melhor.get(ult))) ult = id; });
+    melhor.forEach((v, id) => { if (!critSucc(id).length && (ult === null || v > melhor.get(ult))) ult = id; });
     if (ult !== null) { critVar = melhor.get(ult); for (let cur = ult; cur; cur = veio.get(cur)) critSeq.unshift(cur); }
   }
 
@@ -193,9 +215,9 @@ function calcular(durOverride) {
   const caminhos = []; let estourou = false;
   const dfs = (id, acum, soma, vari) => {
     if (caminhos.length >= TETO_CAMINHOS) { estourou = true; return; }
-    const n = N.get(id); acum.push(id); soma += n.dur; vari += n.varia;
-    if (!n.succs.length) caminhos.push({ ids: acum.slice(), dur: soma, varia: vari, crit: Math.abs(soma - dur) < EPS });
-    else n.succs.forEach(s => dfs(s, acum, soma, vari));
+    const n = N.get(id); acum.push(id); vari += n.varia;
+    if (!n.succs.length) caminhos.push({ ids: acum.slice(), dur: soma + n.dur, varia: vari, crit: Math.abs(soma + n.dur - dur) < EPS });
+    else n.succs.forEach(s => dfs(s, acum, soma + peso(n, N.get(s)), vari));
     acum.pop();
   };
   iniciais.forEach(id => dfs(id, [], 0, 0));
@@ -207,7 +229,7 @@ function calcular(durOverride) {
 
   const lista = ordem.map(id => N.get(id));
   return {
-    erros, avisos, dur, N, ordem, acts: lista, caminhos, caminhosCriticos, iniciais, finais,
+    erros, avisos, dur, N, ordem, acts: lista, caminhos, caminhosCriticos, iniciais, finais, peso, aperta, temRelEsp, temAtraso,
     criticas: lista.filter(n => n.crit), critVar, critSeq, sigma: Math.sqrt(critVar)
   };
 }
@@ -316,7 +338,7 @@ function renderDados() {
     } else {
       h += '<td><input data-f="d" inputmode="decimal" value="' + esc(a.d) + '" aria-label="Duração"></td>';
     }
-    h += '<td><input class="pred" data-f="preds" value="' + esc((a.preds || []).join(', ')) + '" placeholder="ex.: A, B" title="Atividades que precisam terminar antes desta, separadas por vírgula. Em branco = esta atividade começa o projeto." aria-label="Predecessoras"></td>';
+    h += '<td><input class="pred" data-f="preds" value="' + esc(textoPreds(a)) + '" placeholder="ex.: A, B ou A(II+2)" title="Atividades que precisam terminar antes desta, separadas por vírgula. Em branco = esta atividade começa o projeto. Relação diferente de término-início: A(II), A(TT), A(IT); com atraso: A(II+2), A(+1)." aria-label="Predecessoras"></td>';
     h += '<td class="noprint"><button class="remover" data-del="' + i + '" title="Remover" aria-label="Remover">×</button></td></tr>';
   });
   t.innerHTML = h + '</tbody>';
@@ -327,20 +349,46 @@ function renderDados() {
    "A-B" quer dizer "A, B". Exceção: se o trecho inteiro (ex.: "A-1") é o código de uma
    atividade que existe, ele é mantido. */
 const SEP_ALT = /[-–—\/+&]+/;
-function leiaPreds(texto, codigos) {
-  const saida = [];
-  String(texto == null ? '' : texto).split(/[,;\s]+/).forEach(tok => {
-    const t = tok.trim().toUpperCase(); if (!t) return;
+/* Tipos de relação (PDM): TI término-início (padrão), II início-início, TT término-término, IT início-término.
+   Aceita também os nomes em inglês FS, SS, FF, SF. O texto fica "B(II+2)": predecessora B, relação II, atraso de 2. */
+const REL_ALIAS = { TI: 'TI', FS: 'TI', II: 'II', SS: 'II', TT: 'TT', FF: 'TT', IT: 'IT', SF: 'IT' };
+function parseRel(txt) {
+  if (txt == null) return null;
+  const m = /^\s*(TI|II|TT|IT|FS|SS|FF|SF)?\s*(?:([+-])\s*(\d+(?:[.,]\d+)?))?\s*$/i.exec(String(txt));
+  if (!m) return null;
+  let lag = m[3] ? parseFloat(m[3].replace(',', '.')) * (m[2] === '-' ? -1 : 1) : 0;
+  if (!isFinite(lag) || Math.abs(lag) > 1e6) lag = 0;
+  return { t: m[1] ? REL_ALIAS[m[1].toUpperCase()] : 'TI', lag };
+}
+function leiaPredsRel(texto, codigos) {
+  const preds = [], rel = {};
+  const s = String(texto == null ? '' : texto);
+  const re = /([^,;\s()]+)\s*(?:\(([^)]*)\))?/g; let m;
+  while ((m = re.exec(s))) {
+    const t = m[1].trim().toUpperCase(); if (!t) continue;
     const partes = (codigos && codigos.has(t)) ? [t] : t.split(SEP_ALT);
-    partes.forEach(p => { p = p.trim(); if (p && saida.indexOf(p) < 0) saida.push(p); });
-  });
-  return saida;
+    const sp = parseRel(m[2]);
+    partes.forEach((p, k) => {
+      p = p.trim(); if (!p) return;
+      if (preds.indexOf(p) < 0) preds.push(p);
+      if (sp && k === partes.length - 1 && !(sp.t === 'TI' && !sp.lag)) rel[p] = sp;
+    });
+  }
+  return { preds, rel };
+}
+const leiaPreds = (texto, codigos) => leiaPredsRel(texto, codigos).preds;
+function textoPreds(a) {
+  return (a.preds || []).map(p => {
+    const r = a.rel && Object.prototype.hasOwnProperty.call(a.rel, p) ? a.rel[p] : null;
+    if (!r) return p;
+    return p + '(' + (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + String(Math.abs(r.lag)).replace('.', ',') : '') + ')';
+  }).join(', ');
 }
 const codigosAtuais = () => new Set(state.acts.map(x => String(x.id).trim().toUpperCase()));
 
 function lerCampo(i, f, v) {
   const a = state.acts[i]; if (!a) return;
-  if (f === 'preds') a.preds = leiaPreds(v, codigosAtuais());
+  if (f === 'preds') { const r = leiaPredsRel(v, codigosAtuais()); a.preds = r.preds; a.rel = r.rel; }
   else if (f === 'id') a.id = String(v).trim().toUpperCase();
   else a[f] = v;
 }
@@ -422,7 +470,7 @@ function renderRede() {
 
   const arestas = [];
   c.acts.forEach(n => {
-    n.preds.forEach(p => { const np = c.N.get(p); arestas.push({ de: p, para: n.id, crit: n.crit && np.crit && Math.abs(np.EF - n.ES) < EPS, fantasma: false }); });
+    n.preds.forEach(p => { const np = c.N.get(p); const r = n.rel.get(p); arestas.push({ de: p, para: n.id, crit: n.crit && np.crit && c.aperta(p, n.id), fantasma: false, rot: r && (r.t !== 'TI' || r.lag) ? (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + Math.abs(r.lag) : '') : '' }); });
     if (!n.preds.length) arestas.push({ de: '__ini', para: n.id, crit: n.crit, fantasma: true });
     if (!n.succs.length) arestas.push({ de: n.id, para: '__fim', crit: n.crit, fantasma: true });
   });
@@ -473,7 +521,9 @@ function renderRede() {
       d += curva(x1, y1, ultimo ? b.x - 2 : b.x, yb);
       if (!ultimo) { d += ' L' + (b.x + b.w) + ',' + yb; x1 = b.x + b.w; y1 = yb; }
     }
-    return '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + (ar.crit ? 2.2 : 1.3) + '"' + (ar.fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (ar.fantasma ? 'arf' : (ar.crit ? 'arc' : 'ar')) + ')"/>';
+    const ult = pos.get(ar.cadeia[ar.cadeia.length - 1]);
+    const rot = ar.rot ? '<text x="' + (ult.x - 8) + '" y="' + (ult.y + ult.h / 2 - 7) + '" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="' + cor + '" stroke="' + C.sup + '" stroke-width="3" paint-order="stroke">' + esc(ar.rot) + '</text>' : '';
+    return '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + (ar.crit ? 2.2 : 1.3) + '"' + (ar.fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (ar.fantasma ? 'arf' : (ar.crit ? 'arc' : 'ar')) + ')"/>' + rot;
   };
 
   let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg) + '" height="' + Math.round(altura) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
@@ -586,9 +636,10 @@ function renderGantt() {
 
   if (state.gSetas) {
     linhas.forEach(n => n.preds.forEach(p => {
-      const y1 = yOf(p), y2 = yOf(n.id), xa = sx(c.N.get(p).EF), xb = sx(n.ES);
-      const mx = Math.max(xa + 8, xb - 8);
-      s += '<path d="M' + xa + ',' + y1 + ' L' + mx + ',' + y1 + ' L' + mx + ',' + y2 + ' L' + (xb - 2) + ',' + y2 + '" fill="none" stroke="' + C.aresta + '" stroke-width="1.1" marker-end="url(#gs)" opacity="0.75"/>';
+      const r = n.rel.get(p) || REL0, pn = c.N.get(p);
+      const y1 = yOf(p), y2 = yOf(n.id), xa = sx(r.t === 'II' || r.t === 'IT' ? pn.ES : pn.EF), xb = sx(r.t === 'TT' || r.t === 'IT' ? n.EF : n.ES);
+      const mx = Math.max(xa + 8, xb - 8), volta = xb < mx;
+      s += '<path d="M' + xa + ',' + y1 + ' L' + mx + ',' + y1 + ' L' + mx + ',' + y2 + ' L' + (volta ? xb + 2 : xb - 2) + ',' + y2 + '" fill="none" stroke="' + C.aresta + '" stroke-width="1.1" marker-end="url(#gs)" opacity="0.75"/>';
     }));
   }
   s += '</svg>';
@@ -712,7 +763,7 @@ function corteMinimo(s, dur, dmin, custo) {
     liga(i, i + 1, pode ? custo.get(n.id) : GRANDE);
     if (!n.preds.length) liga(0, i, GRANDE);
     if (!n.succs.length) liga(i + 1, 1, GRANDE);
-    n.succs.forEach(x => { const m = s.N.get(x); if (m.crit && Math.abs(n.EF - m.ES) < EPS) liga(i + 1, idx.get(x), GRANDE); });
+    n.succs.forEach(x => { const m = s.N.get(x); if (m.crit && s.aperta(n.id, x)) liga(i + 1, idx.get(x), GRANDE); });
   });
   let fluxo = 0;
   for (;;) {
@@ -733,6 +784,7 @@ function corteMinimo(s, dur, dmin, custo) {
 function rodarCrash() {
   const base = calcular();
   if (base.erros.length || !base.acts.length) { alerta('Corrija os erros dos dados antes de comprimir.'); return; }
+  if (base.temRelEsp) { alerta('A compressão só funciona com relações de término-início (TI), com ou sem atraso. Esta rede usa relações II, TT ou IT: troque-as por término-início ou use as outras abas, que aceitam todas as relações.'); return; }
   const neg = state.acts.filter(a => String(a.id).trim() && a.cc !== '' && num(a.cc) < 0).map(a => a.id);
   if (neg.length) { alerta('Custo por período negativo em ' + neg.join(', ') + '. Acelerar custa — informe um valor positivo (ou deixe em branco se a atividade não pode ser acelerada).'); return; }
   const dur = new Map(), dmin = new Map(), custo = new Map();
@@ -853,9 +905,9 @@ const csvCampo = v => { const t = String(v); return /[;"\r\n]/.test(t) ? '"' + t
 
 function exportarCSV() {
   const c = calcOut; if (!c.acts.length) return;
-  const linhas = ['Atividade;Duracao;' + [sg('ES'), sg('EF'), sg('LS'), sg('LF')].join(';') + ';FT;FL;Critica'];
+  const linhas = ['Atividade;Duracao;' + [sg('ES'), sg('EF'), sg('LS'), sg('LF')].join(';') + ';FT;FL;Critica;Predecessoras'];
   c.acts.forEach(n => {
-    linhas.push([n.id, fmt(n.dur), fmt(n.ES), fmt(n.EF), fmt(n.LS), fmt(n.LF), fmt(n.FT), fmt(n.FL), n.crit ? 'Critica' : 'Folga de ' + fmt(n.FT)].map(csvCampo).join(';'));
+    linhas.push([n.id, fmt(n.dur), fmt(n.ES), fmt(n.EF), fmt(n.LS), fmt(n.LF), fmt(n.FT), fmt(n.FL), n.crit ? 'Critica' : 'Folga de ' + fmt(n.FT), textoPreds(n.ref)].map(csvCampo).join(';'));
   });
   baixar(nomeArquivo() + '.csv', '﻿' + linhas.join('\r\n'), 'text/csv;charset=utf-8');
 }
@@ -1015,6 +1067,11 @@ const EXEMPLOS = [
     ['E', 'Treinamento', [1, 2, 3], ['C']], ['F', 'Lançamento', [1, 1, 2], ['D', 'E']]]
   },
   {
+    nome: 'Relações PDM (II, TT e atraso)', modo: 'cpm', unidade: 'd',
+    acts: [['A', 'Projeto', 4, []], ['B', 'Terraplenagem', 6, ['A']], ['C', 'Fundação', 8, ['B(II+3)']],
+    ['D', 'Estrutura', 10, ['C(TT+2)']], ['E', 'Instalações', 5, ['C(+1)']], ['F', 'Entrega', 2, ['D', 'E']]]
+  },
+  {
     nome: 'Projeto para compressão', modo: 'cpm', unidade: 'd', custoDir: 12000, custoInd: 500,
     acts: [['A', 'Projeto', 6, [], 4, 800], ['B', 'Fundação', 8, ['A'], 5, 900],
     ['C', 'Instalações', 5, ['A'], 3, 400], ['D', 'Estrutura', 7, ['B'], 4, 1100],
@@ -1045,7 +1102,7 @@ function carregarExemplo(i) {
     const o = novoAtv(a[0], a[1]);
     if (ex.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; o.d = a[2][1]; }
     else { o.d = a[2]; o.o = a[2]; o.m = a[2]; o.p = a[2]; }
-    o.preds = a[3].slice();
+    const pr = leiaPredsRel(a[3].join(', '), null); o.preds = pr.preds; o.rel = pr.rel;
     if (a.length > 4) { o.dmin = a[4]; o.cc = a[5]; }
     return o;
   });
@@ -1060,7 +1117,7 @@ function colar(txt, substituir) {
   const pert = state.modo === 'pert';
   const ehNum = v => /^[-+]?(R\$)?[\d.,]+$/.test(String(v == null ? '' : v).replace(/\s/g, ''));
   const codsColados = new Set(linhas.map(l => ((l.indexOf('\t') >= 0 ? l.split('\t') : l.split(/;|\s{2,}/))[0] || '').trim().toUpperCase()));
-  const listaPreds = cols => leiaPreds(cols.join(','), codsColados);
+  const listaPreds = cols => leiaPredsRel(cols.join(','), codsColados);
   linhas.forEach((l, i) => {
     /* Do Excel vem tabulação: aí só ela separa colunas, e "A;B" dentro da célula de
        predecessoras continua sendo uma lista. Sem tabulação, separa por ; ou 2+ espaços. */
@@ -1071,8 +1128,8 @@ function colar(txt, substituir) {
     let k = 1, nome = '';
     if (col.length > 2 && !ehNum(col[1]) && ehNum(col[2])) { nome = col[1]; k = 2; }
     const a = novoAtv(String(col[0]).toUpperCase(), nome);
-    if (pert) { a.o = num(col[k]); a.m = num(col[k + 1]); a.p = num(col[k + 2]); a.d = a.m; a.preds = listaPreds(col.slice(k + 3)); }
-    else { a.d = num(col[k]); a.preds = listaPreds(col.slice(k + 1)); }
+    if (pert) { a.o = num(col[k]); a.m = num(col[k + 1]); a.p = num(col[k + 2]); a.d = a.m; const pr = listaPreds(col.slice(k + 3)); a.preds = pr.preds; a.rel = pr.rel; }
+    else { a.d = num(col[k]); const pr = listaPreds(col.slice(k + 1)); a.preds = pr.preds; a.rel = pr.rel; }
     novas.push(a);
   });
   if (!novas.length) { alerta('Não identifiquei nenhuma atividade no texto colado.'); return; }
@@ -1389,6 +1446,14 @@ function normalizaEstado(novo) {
     x.nome = String(x.nome == null ? '' : x.nome).slice(0, 120);
     x.preds = (Array.isArray(x.preds) ? x.preds : String(x.preds == null ? '' : x.preds).split(/[,;\s]+/))
       .map(p => String(p).trim().toUpperCase()).filter(Boolean);
+    const r0 = (x.rel && typeof x.rel === 'object' && !Array.isArray(x.rel)) ? x.rel : {};
+    x.rel = {};
+    x.preds.forEach(p => {
+      if (!Object.prototype.hasOwnProperty.call(r0, p)) return;
+      const q = r0[p]; if (!q || typeof q !== 'object') return;
+      const t = REL_ALIAS[String(q.t).toUpperCase()], lag = Number(q.lag);
+      if (t && isFinite(lag) && Math.abs(lag) <= 1e6 && !(t === 'TI' && !lag)) x.rel[p] = { t, lag };
+    });
     return x;
   });
   return st;
@@ -1437,8 +1502,8 @@ function ligar() {
   $('#tblDados').addEventListener('change', e => {
     if (e.target.dataset.f !== 'preds') return;
     const tr = e.target.closest('tr'); const a = tr && state.acts[+tr.dataset.i]; if (!a) return;
-    const original = e.target.value, corrigido = a.preds.join(', ');
-    const trocouSeparador = SEP_ALT.test(original) && corrigido.replace(/\s/g, '') !== original.replace(/\s/g, '').toUpperCase();
+    const original = e.target.value, corrigido = textoPreds(a);
+    const trocouSeparador = SEP_ALT.test(original.replace(/\([^)]*\)/g, '')) && corrigido.replace(/\s/g, '') !== original.replace(/\s/g, '').toUpperCase();
     if (original.trim() !== corrigido) e.target.value = corrigido;
     if (trocouSeparador) toast('Separador corrigido: “' + original.trim() + '” virou “' + corrigido + '”. Use vírgula entre as predecessoras.');
   });
