@@ -656,7 +656,7 @@ function renderPert() {
     ? '<div class="nota"><b>Informe as três estimativas no modo PERT para ter variabilidade.</b>No modo CPM a duração é determinística: não há distribuição de probabilidade a calcular.</div>'
     : '';
   const ip = $('#interpPert'); ip.hidden = cpm; if (cpm) ip.innerHTML = '';
-  if (!c.acts.length) return;
+  if (!c.acts.length) { renderMC(); return; }
   const mu = c.dur, sgm = c.sigma;
 
   if (!$('#prazoX').value) $('#prazoX').value = r2(mu + (sgm > EPS ? sgm : Math.max(1, mu * 0.1)));
@@ -696,6 +696,81 @@ function renderPert() {
       '<td class="txt">' + (c.critSeq.indexOf(n.id) >= 0 ? 'sim' : '—') + '</td></tr>';
   });
   $('#tblPert').innerHTML = h + '</tbody>';
+  renderMC();
+}
+
+/* ============================================================
+   SIMULAÇÃO DE MONTE CARLO (aba Probabilidade, só no modo PERT)
+   ============================================================ */
+let mcRes = null, mcSig = '';
+const mcAssinatura = () => JSON.stringify([state.modo, state.acts.map(a => [a.id, a.o, a.m, a.p, a.preds, a.rel])]);
+function mcPct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
+function mcHistograma(r, mu, sg, X) {
+  const W = 360, H = 200, PX = 14, PB = 26, PT = 10, NB = 26;
+  const a = r.min, b = r.max > r.min ? r.max : r.min + 1, bw = (b - a) / NB;
+  const cont = new Array(NB).fill(0);
+  for (let k = 0; k < r.N; k++) { let i = Math.floor((r.ord[k] - a) / bw); if (i >= NB) i = NB - 1; cont[i]++; }
+  const dens = cont.map(c => c / r.N / bw);
+  const dn = v => sg > EPS ? Math.exp(-0.5 * Math.pow((v - mu) / sg, 2)) / (sg * Math.sqrt(2 * Math.PI)) : 0;
+  let topo = Math.max.apply(null, dens);
+  if (sg > EPS) topo = Math.max(topo, dn(mu));
+  const sx = v => PX + (v - a) / (b - a) * (W - PX * 2), sy = d => PT + (1 - d / topo) * (H - PT - PB);
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:560px;display:block" font-family="IBM Plex Mono, monospace" role="img" aria-label="Histograma da duração do projeto nas rodadas simuladas">';
+  dens.forEach((d, i) => {
+    const x = sx(a + i * bw), w = Math.max(1, sx(a + (i + 1) * bw) - x - 1);
+    s += '<rect x="' + x.toFixed(1) + '" y="' + sy(d).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (H - PB - sy(d)).toFixed(1) + '" fill="' + C.navy + '" opacity="0.55"/>';
+  });
+  if (sg > EPS) {
+    let d = '';
+    for (let i = 0; i <= 120; i++) { const v = a + (b - a) * i / 120; d += (i ? 'L' : 'M') + sx(v).toFixed(1) + ',' + sy(dn(v)).toFixed(1) + ' '; }
+    s += '<path d="' + d + '" fill="none" stroke="' + C.tinta2 + '" stroke-width="1.5" stroke-dasharray="5 3"/>';
+  }
+  s += '<line x1="' + PX + '" y1="' + (H - PB) + '" x2="' + (W - PX) + '" y2="' + (H - PB) + '" stroke="' + C.borda + '"/>';
+  if (X >= a && X <= b) s += '<line x1="' + sx(X).toFixed(1) + '" y1="' + PT + '" x2="' + sx(X).toFixed(1) + '" y2="' + (H - PB) + '" stroke="' + C.critico + '" stroke-width="1.6"/>';
+  [[a, 'start'], [(a + b) / 2, 'middle'], [b, 'end']].forEach(t => {
+    s += '<text x="' + (t[1] === 'start' ? PX : t[1] === 'end' ? W - PX : W / 2) + '" y="' + (H - PB + 16) + '" text-anchor="' + t[1] + '" font-size="12" fill="' + C.apagadinho + '">' + fmt(t[0]) + '</text>';
+  });
+  return s + '</svg>';
+}
+function renderMC() {
+  const bloco = $('#mcBloco'); if (!bloco) return;
+  const cpm = state.modo !== 'pert';
+  bloco.hidden = cpm;
+  if (cpm) return;
+  if (mcRes && mcSig !== mcAssinatura()) { mcRes = null; }
+  const box = $('#mcSaida');
+  if (!mcRes) { box.innerHTML = '<p class="hint" style="margin:0">Clique em <b>Simular</b> para sortear as durações e ver a distribuição do prazo. Se mudar as estimativas, simule de novo.</p>'; return; }
+  const r = mcRes, c = calcOut, mu = c.dur, sg = c.sigma;
+  const X = num($('#prazoX').value), pMC = r.ate(X), pN = sg > EPS ? phi((X - mu) / sg) : (X >= mu ? 1 : 0);
+  let h = '<div class="kpis">' +
+    '<div class="kpi"><div class="olho">Prazo médio simulado</div><div class="v">' + fmt(r.media) + '</div></div>' +
+    '<div class="kpi"><div class="olho">Desvio padrão</div><div class="v">' + fmt(r.dp) + '</div></div>' +
+    '<div class="kpi"><div class="olho">Chance de até ' + fmt(X) + '</div><div class="v navy">' + mcPct(pMC) + '</div></div>' +
+    '</div>';
+  h += '<div style="margin-top:12px">' + mcHistograma(r, mu, sg, X) + '</div>';
+  h += '<p class="hint">' + r.N.toLocaleString('pt-BR') + ' rodadas · semente ' + r.seed + ' · barras = simulação · tracejado = aproximação normal do PERT · linha vermelha = prazo desejado (' + fmt(X) + ')</p>';
+  const dif = r.media - mu;
+  h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> em ' + r.N.toLocaleString('pt-BR') + ' rodadas, <b>' + mcPct(pMC) + '</b> terminaram em até <b>' + fmt(X) + ' ' + uni(X) + '</b>; a aproximação normal do PERT dá <b>' + mcPct(pN) + '</b>.' +
+    (dif > Math.max(0.01 * mu, 0.05) ? ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou acima do prazo esperado do PERT (<b>' + fmt(mu) + '</b>): com caminhos quase tão longos quanto o crítico, o projeto atrasa quando <i>qualquer</i> deles atrasa, e o PERT clássico só olha o caminho crítico esperado.' : ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou próximo do esperado do PERT (<b>' + fmt(mu) + '</b>): o caminho crítico domina a rede.') + '</p>';
+  h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Confiança</th><th class="dir">Simulação</th><th class="dir">Normal (PERT)</th></tr></thead><tbody>';
+  [50, 75, 80, 90, 95, 99].forEach(q => { h += '<tr><td>' + q + '%</td><td class="dir"><b>' + fmt(r.pct(q / 100)) + '</b></td><td class="dir">' + (sg > EPS ? fmt(mu + zInv(q / 100) * sg) : fmt(mu)) + '</td></tr>'; });
+  h += '</tbody></table></div>';
+  const ordem = r.ids.map((id, i) => [id, r.indiceCrit[i]]).sort((x, y) => y[1] - x[1]);
+  h += '<h3 style="font-size:19px;margin:18px 0 6px">Índice de criticidade</h3><p class="hint" style="margin:0 0 8px">Em quantas rodadas a atividade esteve no caminho crítico.</p><div class="rolar"><table class="tab"><thead><tr><th>Atividade</th><th class="dir">Criticidade</th><th style="width:50%"></th></tr></thead><tbody>';
+  ordem.forEach(o => { const n = c.N.get(o[0]); h += '<tr class="' + (o[1] > 0.995 ? 'crit' : '') + '"><td class="cod"><b>' + esc(o[0]) + '</b>' + (n && n.nome ? ' <span style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td><td class="dir">' + mcPct(o[1]) + '</td><td><div style="height:10px;background:var(--navy);opacity:.6;border-radius:2px;width:' + (o[1] * 100).toFixed(1) + '%"></div></td></tr>'; });
+  box.innerHTML = h + '</tbody></table></div>';
+}
+function mcRodar() {
+  const c = calcOut;
+  if (!c || c.erros.length || !c.acts.length) { alerta('Corrija os erros dos dados antes de simular.'); return; }
+  const N = Math.min(50000, Math.max(100, parseInt($('#mcN').value, 10) || 10000));
+  $('#mcSaida').innerHTML = '<p class="hint" style="margin:0">Simulando…</p>';
+  setTimeout(() => {
+    try {
+      mcRes = mcSimular(c, N, 1 + Math.floor(Math.random() * 2147483646)); mcSig = mcAssinatura();
+    } catch (e) { mcRes = null; alerta('Não consegui simular esta rede.'); }
+    renderMC();
+  }, 30);
 }
 
 function desenhaNormal(mu, sg, X) {
@@ -1581,6 +1656,7 @@ function ligar() {
   $('#btnProjetos').onclick = dlgProjetos;
 
   $('#btnContato').onclick = dlgContato;
+  $('#btnMC').onclick = mcRodar;
   $('#btnExemploMini').onclick = carregarExemploMini;
   /* lembra se a pessoa fechou o passo a passo */
   const det = $('#comoPreencher');

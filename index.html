@@ -489,6 +489,22 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <p class="apoio">te = (o + 4m + p) / 6 · variância = ((p − o) / 6)². A variância do projeto soma apenas as atividades do caminho crítico.</p>
   </div>
   <div class="card"><div class="rolar"><table class="tab navy" id="tblPert"></table></div></div>
+
+  <div id="mcBloco">
+    <div class="sec" style="margin-top:26px">
+      <h3>Simulação de Monte Carlo</h3>
+      <p class="apoio">A curva normal acima é uma aproximação: só olha o caminho crítico esperado. A simulação sorteia a duração de <b>todas</b> as atividades, milhares de vezes, e mede o prazo que saiu em cada rodada.</p>
+    </div>
+    <p class="ler"><b class="t">Como ler:</b> cada rodada sorteia uma duração para cada atividade, entre o otimista (o) e o pessimista (p), com o mais provável (m) pesando mais (distribuição beta-PERT), e calcula o prazo do projeto. O gráfico mostra quantas rodadas terminaram em cada prazo. A linha vermelha é o prazo desejado; a curva tracejada é a aproximação normal do PERT, para comparar. O índice de criticidade diz em quantas rodadas cada atividade ficou no caminho crítico.</p>
+    <div class="card"><div class="card-corpo">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div class="campo" style="max-width:200px"><label for="mcN">Rodadas</label>
+          <select id="mcN"><option value="1000">1.000</option><option value="5000">5.000</option><option value="10000" selected>10.000</option><option value="50000">50.000</option></select></div>
+        <button class="bt primario" id="btnMC" style="padding:11px 20px">Simular</button>
+      </div>
+      <div id="mcSaida" style="margin-top:16px"></div>
+    </div></div>
+  </div>
 </section>
 
 <!-- ============ 6 · COMPRESSÃO ============ -->
@@ -592,7 +608,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <dl class="gloss">
       <dt>CPM (<i>Critical Path Method</i>)</dt><dd>Criado entre 1957 e 1959 por Kelley e Walker, na DuPont, para obras e manutenção industrial. Parte de atividades conhecidas, com duração e custo bem estimados: uma duração só por atividade. Permite analisar a troca entre custo e prazo (compressão).</dd>
       <dt>PERT (<i>Program Evaluation and Review Technique</i>)</dt><dd>Criado em 1958 pela Marinha dos EUA, no projeto do míssil Polaris, para atividades inéditas e incertas. Pede três estimativas (otimista, mais provável e pessimista). A duração esperada é te = (o + 4m + p) / 6 e o desvio é σ = (p − o) / 6; somando os desvios do caminho crítico, estima-se a chance de cumprir um prazo.</dd>
-      <dt>Fora desta calculadora</dt><dd>Simulação de Monte Carlo (no lugar da aproximação normal do PERT), GERT (ramificações probabilísticas), nivelamento de recursos e corrente crítica. São extensões que exigem dados que um exercício de sala raramente tem.</dd>
+      <dt>Simulação de Monte Carlo</dt><dd>Método dos anos 1940, que usa sorteios repetidos para estimar o que uma conta direta não alcança. Aqui, sorteia a duração de cada atividade milhares de vezes e mede o prazo do projeto em cada rodada. Corrige o que o PERT clássico ignora: quando há caminhos paralelos, o prazo é o maior entre eles, e por isso a média simulada costuma ficar acima do prazo esperado. Está na aba Probabilidade.</dd>
+      <dt>Fora desta calculadora</dt><dd>GERT (ramificações probabilísticas), nivelamento de recursos e corrente crítica. São extensões que exigem dados que um exercício de sala raramente tem.</dd>
     </dl>
   </div></div>
 </section>
@@ -645,7 +662,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="dlg-f" id="dlgRodape"></div>
 </dialog>
 
-<script src="pratica.js"></script>
+<script src="pratica.js"></script><script src="mc.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
