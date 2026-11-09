@@ -358,9 +358,41 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   .resumo .fim{margin-left:0;text-align:left}
   .contato{padding:0 12px 24px}
 }
+#capa{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px 16px;text-align:center;background:radial-gradient(circle at 50% 38%,#FFFFFF 0,#F4F0E8 55%,#E9E2D3 100%);transition:opacity .6s,visibility .6s}
+#capa.sai{opacity:0;visibility:hidden}
+#capa .rede-fundo{position:absolute;inset:0;width:100%;height:100%;opacity:.13;pointer-events:none}
+#capa .rede-fundo path{fill:none;stroke:#1A3A6B;stroke-width:2;stroke-dasharray:900;stroke-dashoffset:900;animation:capaTraco 3s ease forwards}
+#capa .rede-fundo circle{fill:#C9A227;opacity:0;animation:capaNo .5s ease forwards}
+@keyframes capaTraco{to{stroke-dashoffset:0}}@keyframes capaNo{to{opacity:1}}
+#capa .capa-sim{width:clamp(90px,16vw,150px);animation:capaSobe .9s ease both}
+#capa .capa-logo{width:min(640px,88vw);height:auto;animation:capaSobe .9s .25s ease both}
+#capa .capa-frase{font:400 clamp(15px,2.2vw,19px)/1.5 var(--texto);color:#16243B;max-width:560px;animation:capaSobe .9s .5s ease both}
+#capa .capa-btn{font:600 16px var(--texto);background:#1A3A6B;color:#fff;border:0;border-radius:999px;padding:13px 34px;cursor:pointer;box-shadow:0 4px 14px rgba(26,58,107,.3);animation:capaSobe .9s .75s ease both}
+#capa .capa-btn:hover{background:#C9A227;color:#16243B}
+#capa .capa-ass{position:absolute;bottom:14px;font:500 12px var(--mono,monospace);color:#6b6b6b;letter-spacing:.08em}
+@keyframes capaSobe{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#capa *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}
 </style>
 </head>
 <body>
+<div id="capa" role="dialog" aria-label="Abertura">
+  <svg class="rede-fundo" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <path d="M60 300 L220 160 L420 120 L620 200 L800 140 L950 300 M220 160 L260 420 L480 470 L700 400 L950 300 M420 120 L480 470 M620 200 L700 400"/>
+    <circle cx="60" cy="300" r="12" style="animation-delay:.2s"/><circle cx="220" cy="160" r="12" style="animation-delay:.6s"/><circle cx="420" cy="120" r="12" style="animation-delay:1s"/><circle cx="620" cy="200" r="12" style="animation-delay:1.4s"/><circle cx="800" cy="140" r="12" style="animation-delay:1.8s"/><circle cx="260" cy="420" r="12" style="animation-delay:1s"/><circle cx="480" cy="470" r="12" style="animation-delay:1.6s"/><circle cx="700" cy="400" r="12" style="animation-delay:2.2s"/><circle cx="950" cy="300" r="14" style="animation-delay:2.6s"/>
+  </svg>
+  <img class="capa-sim" src="img/simbolo.webp" alt="" width="360" height="294">
+  <img class="capa-logo" src="img/logo-pequeno.webp" alt="GEO PERT/CPM · Gestão Estratégica de Operações" width="970" height="194">
+  <p class="capa-frase">Calculadora didática de redes PERT/CPM: caminho crítico, folgas, probabilidade de prazo e muito mais.</p>
+  <button class="capa-btn" type="button" id="capaEntrar">Começar</button>
+  <div class="capa-ass">@LMVN 2026</div>
+</div>
+<script>(function(){var c=document.getElementById('capa'),q=new URLSearchParams(location.search);
+var visto=false;try{visto=sessionStorage.getItem('pertcpm.capa')==='1'}catch(e){}
+if(visto||q.has('teste')||/^#(proj|ex)=/.test(location.hash)){c.remove();return}
+function sai(){try{sessionStorage.setItem('pertcpm.capa','1')}catch(e){}c.classList.add('sai');setTimeout(function(){c.remove()},700)}
+document.getElementById('capaEntrar').onclick=sai;document.addEventListener('keydown',function k(e){if(e.key==='Enter'||e.key==='Escape'){sai();document.removeEventListener('keydown',k)}});
+document.getElementById('capaEntrar').focus();})();</script>
+
 
 <header class="topo noprint">
   <div class="topo-in">

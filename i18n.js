@@ -81,14 +81,13 @@ function i18nIniciar() {
   i18nPrepara();
   document.title = traduz(document.title);
   /* o subtítulo do logotipo faz parte da imagem: fora do PT, usa o logo sem subtítulo e escreve o subtítulo traduzido */
-  const lg = document.querySelector('.tit-logo img');
-  if (lg) {
+  document.querySelectorAll('.tit-logo img, #capa .capa-logo').forEach(lg => {
     lg.src = 'img/logo-titulo.webp'; lg.width = 970; lg.height = 180; lg.alt = 'GEO PERT/CPM';
     const sub = document.createElement('div'); sub.className = 'logo-sub';
     sub.textContent = traduz('Gestão Estratégica de Operações');
     sub.style.cssText = 'font:500 clamp(15px,2.4vw,24px)/1.2 var(--texto);letter-spacing:.06em;color:var(--navy);margin-top:6px';
     lg.insertAdjacentElement('afterend', sub);
-  }
+  });
   i18nNo(document.body);
   new MutationObserver(ms => {
     for (const m of ms) {
