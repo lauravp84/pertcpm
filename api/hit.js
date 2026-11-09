@@ -29,6 +29,8 @@ function limpaCaminho(p) {
      assim ninguém cria chaves sem fim no banco nem infla a lista de páginas. */
   if (p === '/' || p === '/index.html') return '/';
   if (p === '/painel' || p === '/painel.html') return '/painel';
+  /* uso de abas e exemplos, agregado: 'aba:rede', 'ex:cpm-classico' */
+  if (/^(aba|ex):[a-z0-9-]{1,40}$/.test(p)) return p;
   return '/outro';
 }
 
@@ -49,6 +51,10 @@ module.exports = async (req, res) => {
   try {
     const dia = diaSaoPaulo();
     const caminho = limpaCaminho((req.query && req.query.p) || '/');
+    if (caminho.indexOf(':') > 0) {   /* uso de aba/exemplo: só o contador próprio, sem contar visita */
+      await redis([['INCR', 'pertcpm:pag:' + caminho], ['SADD', 'pertcpm:paginas', caminho]]);
+      res.status(200).json({ ok: true }); return;
+    }
     const marca = await impressaoDigital(req, dia);
 
     const r = await redis([

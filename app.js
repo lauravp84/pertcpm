@@ -543,7 +543,7 @@ function renderRede() {
       (ar.tip ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="14" data-tip="' + esc(ar.tip) + '"/>' : '');
   };
 
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg * zoomRede) + '" height="' + Math.round(altura * zoomRede) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg * zoomRede * (document.body.classList.contains('projetor') ? 1.35 : 1)) + '" height="' + Math.round(altura * zoomRede * (document.body.classList.contains('projetor') ? 1.35 : 1)) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
   s += '<defs>';
   [['ar', C.aresta], ['arc', C.critico], ['arf', C.fantasmaBorda]].forEach(par => {
     s += '<marker id="' + par[0] + '" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="' + par[1] + '"/></marker>';
@@ -1208,6 +1208,7 @@ function dlgProjetos() {
       : '<p class="hint">Nenhum projeto salvo ainda. Use o botão <b>Salvar projeto</b> no topo.</p>'),
     [['Exportar JSON', () => baixar(nomeArquivo() + '.json', JSON.stringify(state, null, 2), 'application/json')],
     ['Importar JSON', importarJSON],
+    ['Importar MS Project (.xml)', importarMSProject],
     ['Fechar', () => $('#dlg').close(), true]]);
   $('#dlgCorpo').onclick = e => {
     const ab = e.target.getAttribute('data-abrir'), ap = e.target.getAttribute('data-apagar');
@@ -1288,6 +1289,7 @@ function carregarExemploMini() {
 
 function carregarExemplo(i) {
   const ex = EXEMPLOS[i]; if (!ex) return;
+  if (typeof registraUso === 'function') registraUso('ex', ex.nome);
   const st = estadoVazio();
   st.nome = ex.nome; st.modo = ex.modo; st.unidade = ex.unidade || 'd';
   st.custoDir = ex.custoDir || ''; st.custoInd = ex.custoInd || '';
@@ -1355,7 +1357,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v29';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v30';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
@@ -1580,6 +1582,7 @@ function contarVisita() {
    ============================================================ */
 function irPara(p) {
   state.aba = p;
+  if (typeof registraUso === 'function') registraUso('aba', p);
   $$('#tabs .aba').forEach(t => { const on = t.dataset.p === p; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
   const ativa = $('#tabs .aba.on'); if (ativa && ativa.scrollIntoView) ativa.scrollIntoView({ inline: 'center', block: 'nearest' });   /* no celular, o menu rola até a aba ativa */
   $$('.painel').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
@@ -1823,7 +1826,7 @@ function ligar() {
   $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.3, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
   $('#btnZmAjustar').onclick = () => { const w = $('#stageRede').clientWidth - 2; if (redeLarg > 0 && w > 0) { zoomRede = Math.max(0.3, Math.min(2.4, +(w / redeLarg).toFixed(2))); renderRede(); } };
   $('#btnZmMais').onclick = () => { zoomRede = Math.min(2.4, +(zoomRede + 0.2).toFixed(2)); renderRede(); };
-  ligarRecursos(); ligarControle(); ligarCCPM(); ligarDidatica();
+  ligarRecursos(); ligarControle(); ligarCCPM(); ligarDidatica(); ligarExtras();
   $('#btnExemploMini').onclick = carregarExemploMini;
   $('#btnHeroEx').onclick = () => { carregarExemploMini(); irPara('result'); scrollTo(0, 0); };
   /* lembra se a pessoa fechou o passo a passo */
@@ -1864,6 +1867,7 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
   /* Link direto da aula: ?exemplo=tf41b abre o caso Electrolux pronto (T = 33 semanas, B → E → G → H). */
   try { if (/[?&]exemplo=tf41b\b/i.test(location.search)) carregarExemplo(EXEMPLOS.findIndex(e => /TF41B/.test(e.nome))); } catch (e) { }
   try { if (typeof iniciaPratica === 'function') iniciaPratica(); } catch (e) { }
+  try { projAbrirPorLink(); } catch (e) { }
   addEventListener('beforeunload', gravarEstado);
   contarVisita();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });

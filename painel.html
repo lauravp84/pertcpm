@@ -93,7 +93,9 @@ function grafico(serie){
 }
 
 function nomePagina(p){
- const mapa={'/':'Sumário','/painel':'Painel','/quanti':'Quantitativo'};
+ const mapa={'/':'Calculadora','/painel':'Painel','/outro':'Outros'};
+ if(p.indexOf('aba:')===0) return 'Aba · '+p.slice(4).replace(/-/g,' ');
+ if(p.indexOf('ex:')===0) return 'Exemplo · '+p.slice(3).replace(/-/g,' ');
  if(mapa[p]) return mapa[p];
  const m=/^\/t(\d+)(?:\/(.*))?$/.exec(p);
  if(m){ const t='Tópico '+m[1]; return m[2]?t+' · '+m[2].replace('.html','').replace(/-/g,' '):t+' · página do tópico'; }
@@ -145,7 +147,13 @@ async function carregar(){
  <div class="bloco"><h3>Páginas mais abertas</h3>
  <p class="leg">Onde a turma efetivamente entrou.</p>
  <table class="dados"><thead><tr><th>Página</th><th style="text-align:right">Visitas</th></tr></thead><tbody>
- ${d.porPagina.map(p=>`<tr><td>${nomePagina(p.pagina)}</td><td class="n">${fmt(p.visitas)}</td></tr>`).join('')||'<tr><td colspan="2">Sem registros ainda.</td></tr>'}
+ ${d.porPagina.filter(p=>p.pagina.indexOf(':')<0).map(p=>`<tr><td>${nomePagina(p.pagina)}</td><td class="n">${fmt(p.visitas)}</td></tr>`).join('')||'<tr><td colspan="2">Sem registros ainda.</td></tr>'}
+ </tbody></table></div>
+
+ <div class="bloco"><h3>Abas e exemplos mais usados</h3>
+ <p class="leg">Cada visita conta uma vez por aba e por exemplo. Mostra onde os alunos param e o que raramente é aberto.</p>
+ <table class="dados"><thead><tr><th>Recurso</th><th style="text-align:right">Usos</th></tr></thead><tbody>
+ ${d.porPagina.filter(p=>p.pagina.indexOf(':')>0).map(p=>`<tr><td>${nomePagina(p.pagina)}</td><td class="n">${fmt(p.visitas)}</td></tr>`).join('')||'<tr><td colspan="2">Sem registros ainda (começa a contar a partir da versão v30).</td></tr>'}
  </tbody></table></div>
 
  <div class="bloco"><h3>Histórico dia a dia</h3>

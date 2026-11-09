@@ -280,6 +280,19 @@ input[type=range].faixa{width:100%;max-width:420px;accent-color:var(--navy);marg
 .aluno-op:hover:not([disabled]){background:var(--critico-fundo)}
 .aluno-op[disabled]{opacity:.45;cursor:not-allowed}
 .termo{border-bottom:1px dotted var(--navy);cursor:help;text-decoration:none}
+/* ---------- modo projetor ---------- */
+body.projetor .ler,body.projetor .apoio,body.projetor .hint,body.projetor .legenda,body.projetor details.como,body.projetor .passos,body.projetor .resumo .olho,body.projetor .reflexao,body.projetor #explicaTudoCorpo,body.projetor .rodape{display:none!important}
+body.projetor .sec h2{font-size:42px}body.projetor .sec h3,body.projetor h3{font-size:26px}
+body.projetor .tab{font-size:17px}body.projetor .tab th{font-size:13px}
+body.projetor .resumo .val{font-size:34px}body.projetor .aba{font-size:16px;padding:14px 12px}
+body.projetor .kpi .v{font-size:34px}body.projetor .explica-passos{font-size:19px}
+body.projetor .caminho{font-size:18px}
+/* ---------- ache o erro ---------- */
+.ache td.ache-cel{cursor:pointer}
+.ache td.ache-cel:hover{background:rgba(26,58,107,.08);outline:2px solid var(--navy);outline-offset:-2px}
+.ache td.ache-certa{background:var(--folga-fundo)!important;outline:2px solid var(--folga);outline-offset:-2px;font-weight:700}
+.ache td.ache-errada{background:var(--erro-fundo)!important;outline:2px solid var(--critico);outline-offset:-2px}
+.reflexao{margin-top:18px}
 /* ---------- explicação ao passar o mouse ---------- */
 [data-tip]{cursor:help}
 #tip{position:fixed;z-index:80;max-width:300px;background:var(--navy-escuro,#10264A);color:#fff;font-size:13px;line-height:1.45;padding:10px 12px;border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;white-space:pre-line}
@@ -340,6 +353,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <select class="bt-topo" id="selExemplos" aria-label="Exemplos"><option value="">Exemplos…</option></select>
       <button class="bt-topo" id="btnSalvar">Salvar<span class="so-desk"> projeto</span></button>
       <button class="bt-topo" id="btnProjetos">Abrir</button>
+      <button class="bt-topo so-nav" id="btnLinkProj" title="Copiar um link que abre este projeto">Link</button>
+      <button class="bt-topo so-nav" id="btnProjetor" title="Fontes maiores e sem textos de apoio, para projetar em sala">Projetor</button>
       <button class="bt-topo so-nav" data-ir="guia">Guia</button>
       <button class="bt-topo so-nav" data-ir="contato">Contato</button>
     </div>
@@ -539,7 +554,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="sec">
     <h2>Quadro de cálculo</h2>
     <div class="acoes noprint">
-      <button class="bt" id="btnCSV">Exportar CSV</button>
+      <button class="bt" id="btnXLSX">Exportar Excel (.xlsx)</button>
+      <button class="bt" id="btnCSV">CSV</button>
       <button class="bt" id="btnImprimir">Imprimir / PDF</button>
     </div>
     <p class="apoio" id="legendaRes"></p>
@@ -772,6 +788,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
   </div></div>
   <div id="prCorpo"></div>
+  <div class="card" style="margin-top:22px"><div class="card-corpo"><h3 style="font-size:21px;margin-bottom:6px">Ache o erro</h3><div id="prErroCorpo"></div></div></div>
 </section>
 
 <!-- ============ GUIA ============ -->
@@ -788,6 +805,25 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <p>Quando a duração é incerta: <span class="mono">te = (o + 4m + p) / 6</span> e <span class="mono">σ² = ((p − o)/6)²</span>. A duração do projeto vira uma distribuição aproximadamente normal, com média igual à soma dos te críticos e variância igual à soma das variâncias críticas — daí sai a probabilidade de cumprir qualquer prazo.</p></div>
     <div class="card"><h3>5 · Compressão</h3>
       <p>Para encurtar o projeto só adianta acelerar atividades <b>críticas</b>. Comprime-se sempre a de menor custo por período; quando surge um segundo caminho crítico, é preciso comprimir os dois ao mesmo tempo. O prazo ótimo é o que minimiza custo direto + custo indireto.</p></div>
+    <div class="card"><h3>Siglas: disciplina, inglês e livros</h3>
+      <p>Os livros e programas usam nomes diferentes para as mesmas datas. A tabela ajuda a ler qualquer um deles.</p>
+      <div class="rolar"><table class="tab"><thead><tr><th>Conceito</th><th>Disciplina</th><th>Inglês (PMBOK, MS Project)</th><th>Outros nomes em português</th></tr></thead><tbody>
+      <tr><td class="txt">Primeira data de início</td><td class="cod">PDI</td><td class="cod">ES · <i>Early Start</i></td><td class="txt">início mais cedo, IMC</td></tr>
+      <tr><td class="txt">Primeira data de término</td><td class="cod">PDT</td><td class="cod">EF · <i>Early Finish</i></td><td class="txt">término mais cedo, TMC</td></tr>
+      <tr><td class="txt">Última data de início</td><td class="cod">UDI</td><td class="cod">LS · <i>Late Start</i></td><td class="txt">início mais tarde, IMT</td></tr>
+      <tr><td class="txt">Última data de término</td><td class="cod">UDT</td><td class="cod">LF · <i>Late Finish</i></td><td class="txt">término mais tarde, TMT</td></tr>
+      <tr><td class="txt">Folga total</td><td class="cod">FT</td><td class="cod">TF · <i>Total Float / Slack</i></td><td class="txt">folga</td></tr>
+      <tr><td class="txt">Folga livre</td><td class="cod">FL</td><td class="cod">FF · <i>Free Float</i></td><td class="txt">—</td></tr>
+      <tr><td class="txt">Relações entre atividades</td><td class="cod">TI · II · TT · IT</td><td class="cod">FS · SS · FF · SF</td><td class="txt">fim-início, início-início, fim-fim, início-fim</td></tr>
+      <tr><td class="txt">Espera / antecipação</td><td class="cod">atraso (+) / (−)</td><td class="cod"><i>lag</i> / <i>lead</i></td><td class="txt">defasagem</td></tr>
+      <tr><td class="txt">Compressão</td><td class="cod">compressão</td><td class="cod"><i>crashing</i></td><td class="txt">aceleração, <i>crash</i></td></tr>
+      <tr><td class="txt">Pulmão</td><td class="cod">PP · PC</td><td class="cod"><i>project buffer · feeding buffer</i></td><td class="txt">reserva, <i>buffer</i></td></tr>
+      <tr><td class="txt">Valor agregado</td><td class="cod">EV</td><td class="cod">EV · <i>Earned Value</i> (BCWP)</td><td class="txt">valor do trabalho realizado</td></tr>
+      <tr><td class="txt">Valor planejado</td><td class="cod">PV</td><td class="cod">PV · <i>Planned Value</i> (BCWS)</td><td class="txt">custo orçado do trabalho agendado</td></tr>
+      <tr><td class="txt">Custo real</td><td class="cod">AC</td><td class="cod">AC · <i>Actual Cost</i> (ACWP)</td><td class="txt">custo realizado</td></tr>
+      <tr><td class="txt">Diagrama de atividades em nós</td><td class="cod">AON</td><td class="cod">AON · <i>Activity on Node</i>, PDM</td><td class="txt">diagrama de precedência (em oposição ao AOA, atividade na seta)</td></tr>
+      </tbody></table></div>
+    </div>
     <div class="card"><h3>Glossário</h3>
       <dl class="gloss">
         <dt>Atividade</dt><dd>Tarefa do projeto, com duração definida.</dd>
@@ -887,7 +923,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </dialog>
 
 <div id="tip" role="tooltip" hidden></div>
-<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script><script src="didatica.js"></script>
+<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script><script src="didatica.js"></script><script src="extras.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

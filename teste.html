@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testes · GEO PERT/CPM</title>
+<meta name="robots" content="noindex">
+<style>
+body{font:15px/1.5 -apple-system,"Segoe UI",sans-serif;color:#16243B;background:#F1EEE8;margin:0;padding:24px}
+h1{font-size:24px;margin:0 0 4px}.sub{color:#5C6A80;margin:0 0 18px}
+.lista{display:grid;gap:8px;max-width:900px}
+.t{background:#FBF9F6;border:1px solid #DED8CE;border-left:6px solid #9AA6B8;border-radius:5px;padding:10px 14px;display:flex;gap:12px;align-items:baseline}
+.t.ok{border-left-color:#2E7386}.t.falha{border-left-color:#B3392C;background:#FBEFEC}.t.roda{border-left-color:#C9A227}
+.t b{min-width:70px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.t .d{color:#5C6A80;font-size:13.5px;margin-left:auto;text-align:right}
+.res{margin:18px 0;font-size:18px}.res.ok{color:#2E7386}.res.falha{color:#B3392C}
+button{font:inherit;padding:9px 16px;border:1px solid #1A3A6B;background:#1A3A6B;color:#F1EEE8;border-radius:3px;cursor:pointer}
+iframe{position:absolute;left:-9999px;width:1200px;height:900px;border:0}
+</style>
+</head>
+<body>
+<h1>Testes automáticos · GEO PERT/CPM</h1>
+<p class="sub">Carrega a calculadora numa moldura invisível e confere o motor de cálculo com redes aleatórias, os exemplos conhecidos, compressão, Monte Carlo, recursos, Praticar e entradas inválidas. Leva cerca de 20 segundos.</p>
+<p><button id="rodar">Rodar de novo</button> <span id="versao" class="sub"></span></p>
+<div class="res" id="res"></div>
+<div class="lista" id="lista"></div>
+<iframe id="app" src="index.html?teste=1"></iframe>
+<script>
+const lista = document.getElementById('lista'), resEl = document.getElementById('res');
+const TESTES = [];
+function teste(nome, fn) { TESTES.push({ nome, fn }); }
+const espera = ms => new Promise(r => setTimeout(r, ms));
+const L = 'ABCDEFGHIJKLMNOP', TIPOS = ['TI', 'II', 'TT', 'IT'];
+const rnd = n => Math.floor(Math.random() * n);
+
+function redeAleatoria(W, m, opts) {
+  const acts = [];
+  for (let i = 0; i < m; i++) {
+    const ps = [], rel = {};
+    for (let j = 0; j < i; j++) if (Math.random() < 0.3) { ps.push(L[j]); if (opts.pdm && Math.random() < 0.4) { const t = TIPOS[rnd(4)], lag = rnd(5) - 2; if (!(t === 'TI' && !lag)) rel[L[j]] = { t, lag }; } }
+    const d = 1 + rnd(8);
+    acts.push(Object.assign(G.novoAtv(L[i]), { d, o: Math.max(1, d - 1), m: d, p: d + 3, preds: ps, rel, dmin: opts.dmin ? Math.max(0, d - 2) : '', cc: opts.cc ? 10 + rnd(90) : '', rec: opts.rec ? 1 + rnd(4) : '' }));
+  }
+  return acts;
+}
+/* referência independente: relaxação iterativa das restrições ES(s) ≥ ES(p) + w */
+function referencia(acts) {
+  const idx = id => acts.findIndex(a => a.id === id);
+  const ES = acts.map(() => 0), cons = [];
+  acts.forEach((a, s) => a.preds.forEach(p => { const pi = idx(p), r = (a.rel && a.rel[p]) || { t: 'TI', lag: 0 }, dp = acts[pi].d, ds = a.d; cons.push([pi, s, r.t === 'II' ? r.lag : r.t === 'TT' ? dp + r.lag - ds : r.t === 'IT' ? r.lag - ds : dp + r.lag]); }));
+  for (let it = 0; it < 400; it++) { let ch = false; cons.forEach(([p, s, w]) => { if (ES[s] < ES[p] + w - 1e-12) { ES[s] = ES[p] + w; ch = true; } }); if (!ch) break; }
+  const dur = Math.max.apply(null, acts.map((a, i) => ES[i] + a.d)), LS = acts.map(a => dur - a.d);
+  for (let it = 0; it < 400; it++) { let ch = false; cons.forEach(([p, s, w]) => { if (LS[p] > LS[s] - w + 1e-12) { LS[p] = LS[s] - w; ch = true; } }); if (!ch) break; }
+  return { ES, LS, dur };
+}
+
+teste('motor', async W => {
+  let bad = 0; const N = 400;
+  for (let k = 0; k < N; k++) {
+    const acts = redeAleatoria(W, 3 + rnd(10), { pdm: k % 2 === 1 }); S().modo = 'cpm'; S().acts = acts;
+    const r = G.calcular(); if (r.erros.length) { bad++; continue; }
+    const ref = referencia(acts); let ok = Math.abs(r.dur - ref.dur) < 1e-9;
+    acts.forEach((a, i) => { const n = r.N.get(a.id); if (Math.abs(n.ES - ref.ES[i]) > 1e-9 || Math.abs(n.LS - ref.LS[i]) > 1e-9 || n.crit !== (Math.abs(ref.LS[i] - ref.ES[i]) < 1e-9) || n.FL < -1e-9 || n.FL > n.FT + 1e-9) ok = false; });
+    if (!r.caminhosCriticos.length || r.caminhosCriticos.some(p => Math.abs(p.dur - ref.dur) > 1e-9)) ok = false;
+    if (!ok) bad++;
+  }
+  return { ok: bad === 0, d: bad + ' divergências em ' + N + ' redes (CPM e PDM)' };
+});
+teste('exemplos', async W => {
+  const esperado = { 'CPM clássico': ['24', 'ABDF'], 'PERT com 3': ['14,17', 'ABDF'], 'Relações PDM': ['23', 'ABCEF'], 'Recursos (niv': ['13', 'ACFG'], 'Projeto para': ['24', 'ABDF'] };
+  const falhas = [];
+  EX().forEach((ex, i) => { const ch = Object.keys(esperado).find(k => ex.nome.indexOf(k) === 0); if (!ch) return; G.carregarExemplo(i); const c = G.calcular(); if (G.fmt(c.dur) !== esperado[ch][0] || c.critSeq.join('') !== esperado[ch][1]) falhas.push(ex.nome + ': ' + G.fmt(c.dur) + ' ' + c.critSeq.join('')); });
+  G.carregar(G.estadoExemploGuiado()); const g = G.calcular(); if (g.dur !== 12 || g.critSeq.join('') !== 'ABD') falhas.push('guiado');
+  return { ok: !falhas.length, d: falhas.length ? falhas.join('; ') : 'todos os exemplos conferem' };
+});
+teste('pert', async W => {
+  G.carregarExemplo(1); const c = G.calcular(); const P = G.phi((16 - c.dur) / c.sigma) * 100;
+  const ok = Math.abs(c.dur - 14.1667) < 1e-3 && Math.abs(c.sigma - 1.59) < 0.01 && Math.abs(P - 87.6) < 0.2 && Math.abs(G.zInv(0.95) - 1.645) < 1e-3;
+  return { ok, d: 'te ' + c.dur.toFixed(3) + ' · σ ' + c.sigma.toFixed(3) + ' · P(≤16) ' + P.toFixed(1) + '% · z95 ' + G.zInv(0.95).toFixed(3) };
+});
+teste('compressao', async W => {
+  let bad = 0; const N = 200;
+  for (let k = 0; k < N; k++) {
+    const acts = redeAleatoria(W, 3 + rnd(7), { pdm: false, dmin: true, cc: true }); acts.forEach(a => { if (k % 3 === 1) a.preds.forEach(p => { if (Math.random() < 0.4) a.rel[p] = { t: 'TI', lag: rnd(5) - 2 }; }); a.rel = Object.fromEntries(Object.entries(a.rel).filter(([, r]) => r.lag)); });
+    S().modo = 'cpm'; S().acts = acts;
+    const dur = new Map(), dmin = new Map(), custo = new Map(); acts.forEach(a => { dur.set(a.id, a.d); dmin.set(a.id, +a.dmin); custo.set(a.id, a.cc); });
+    let s = G.calcular(dur); if (s.erros.length) continue;
+    for (let it = 0; it < 500; it++) { const corte = G.corteMinimo(s, dur, dmin, custo); if (!corte) break; const fm = Math.min.apply(null, s.acts.filter(n => !n.crit).map(n => n.FT).concat([Infinity])); const delta = Math.min.apply(null, [1, fm].concat(corte.ids.map(x => dur.get(x) - dmin.get(x)))); if (!(delta > 1e-9)) break; corte.ids.forEach(x => dur.set(x, dur.get(x) - delta)); const novo = G.calcular(dur); if (novo.dur >= s.dur - 1e-9) break; s = novo; }
+    const all = new Map(); acts.forEach(a => all.set(a.id, +a.dmin)); if (s.dur > G.calcular(all).dur + 1e-6) bad++;
+  }
+  return { ok: bad === 0, d: bad + ' redes não chegaram ao prazo mínimo, em ' + N };
+});
+teste('montecarlo', async W => {
+  S().modo = 'pert';
+  S().acts = [['A', 1, 2, 6], ['B', 2, 4, 9], ['C', 3, 3, 3]].map((x, i) => Object.assign(G.novoAtv(x[0]), { d: x[2], o: x[1], m: x[2], p: x[3], preds: i ? [L[i - 1]] : [], rel: {} }));
+  let c = G.calcular(); const s = G.mcSimular(c, 40000, 7); const durSerie = c.dur;
+  const vv = [[1, 2, 6], [2, 4, 9]].reduce((t, q) => { const te = (q[0] + 4 * q[1] + q[2]) / 6; return t + (te - q[0]) * (q[2] - te) / 7; }, 0);
+  const okSerie = Math.abs(s.media - c.dur) < 0.05 && Math.abs(s.dp - Math.sqrt(vv)) < 0.05;
+  S().acts = [['A', 2, 4, 8, []], ['B', 2, 4, 8, []], ['C', 1, 1, 1, ['A', 'B']]].map(x => Object.assign(G.novoAtv(x[0]), { d: x[2], o: x[1], m: x[2], p: x[3], preds: x[4], rel: {} }));
+  c = G.calcular(); const s2 = G.mcSimular(c, 30000, 3); const okPar = s2.media > c.dur + 0.4 && Math.abs(s2.indiceCrit[0] - 0.5) < 0.03;
+  let bad = 0; for (let k = 0; k < 150; k++) { const acts = redeAleatoria(W, 3 + rnd(8), { pdm: true }); S().acts = acts; const cc = G.calcular(); if (cc.erros.length) continue; const md = G.mcModelo(cc); const ES = new Float64Array(md.n), LS = new Float64Array(md.n), cr = new Float64Array(md.n); const dur = G.mcPassar(md, Float64Array.from(md.dEsp), ES, LS, cr); if (Math.abs(dur - cc.dur) > 1e-9) bad++; md.ids.forEach((id, i) => { if ((cr[i] === 1) !== cc.N.get(id).crit) bad++; }); }
+  return { ok: okSerie && okPar && bad === 0, d: 'serial ' + s.media.toFixed(2) + ' (esperado ' + durSerie.toFixed(2) + ')' + ' · paralelo ' + s2.media.toFixed(2) + ' > te · motor rápido: ' + bad + ' falhas' };
+});
+teste('recursos', async W => {
+  let badA = 0, badL = 0, pior = 0; const N = 150;
+  const viol = (c, S) => { let ok = true; c.ordem.forEach(id => { const n = c.N.get(id); if (S.get(id) < -1e-9) ok = false; n.preds.forEach(p => { if (S.get(id) < S.get(p) + c.peso(c.N.get(p), n) - 1e-9) ok = false; }); }); return ok; };
+  S().modo = 'cpm';
+  for (let k = 0; k < N; k++) {
+    const acts = redeAleatoria(W, 4 + rnd(8), { rec: true }); acts.forEach((a, i) => { if (i % 2) a.rec2 = 1 + rnd(2); }); S().acts = acts; const c = G.calcular(); if (c.erros.length) continue;
+    const rec = G.recMapa(), S0 = G.rcInicioCedo(c), K = G.rcK(rec);
+    const A = G.rcAlisar(c, rec); if (!viol(c, A.S) || Math.abs(G.rcDuracao(c, A.S) - c.dur) > 1e-9) badA++;
+    let s0 = 0, s1 = 0; for (let j = 0; j < K; j++) { const p0 = G.rcPico(G.rcPerfil(G.rcItens(c, rec, S0, j))); const wj = p0 > 0 ? 1 / (p0 * p0) : 0; s0 += wj * G.rcSoma2(G.rcPerfil(G.rcItens(c, rec, S0, j))); s1 += wj * G.rcSoma2(G.rcPerfil(G.rcItens(c, rec, A.S, j))); } if (s1 > s0 * (1 + 0.02) + 1e-6) pior++;   /* mesmo objetivo do algoritmo (ponderado); 2% de tolerância porque ele mede em células de 1 período */
+    const lims = []; for (let j = 0; j < K; j++) { const pico = G.rcPico(G.rcPerfil(G.rcItens(c, rec, S0, j))); lims.push(Math.max(Math.max.apply(null, acts.map(a => (rec.get(a.id) || [])[j] || 0)), Math.ceil(pico * 0.6))); }
+    const r = G.rcLimitar(c, rec, lims, 'folga'); if (r.erro || !viol(c, r.S) || G.rcDuracao(c, r.S) < c.dur - 1e-9) { badL++; continue; }
+    for (let j = 0; j < K; j++) if (G.rcPico(G.rcPerfil(G.rcItens(c, rec, r.S, j))) > lims[j] + 1e-9) { badL++; break; }
+  }
+  return { ok: badA + badL + pior === 0, d: 'alisar: ' + badA + ' inválidos, ' + pior + ' pioraram · limite: ' + badL + ' falhas, em ' + N };
+});
+teste('ccpm-evm', async W => {
+  G.carregarExemplo(0); const cc = G.ccCalcular(G.calcular());
+  const okCC = cc.cadeia.join('') === 'ABDF' && cc.durAgr === 12 && cc.PB === 6 && cc.protegido === 18;
+  G.carregarExemplo(EX().findIndex(e => /compress/.test(e.nome))); const c = G.calcular(); const ev = G.evCalcular(c);
+  const okEV = Math.abs(ev.BAC - 12000) < 1e-6 && Math.abs(G.evPV(c, ev.custos, 0)) < 1e-9 && Math.abs(G.evPV(c, ev.custos, c.dur) - 12000) < 1e-6;
+  return { ok: okCC && okEV, d: 'corrente ' + cc.cadeia.join('') + ' PB ' + cc.PB + ' protegido ' + cc.protegido + ' · BAC ' + ev.BAC };
+});
+teste('entrada', async W => {
+  G.carregar(G.estadoExemploGuiado()); S().acts[0].d = 'abc'; S().acts[1].d = ''; const c = G.calcular();
+  const dash = G.leiaPreds('A - B / C', null).join('') === 'ABC';
+  const pdm = JSON.stringify(G.leiaPredsRel('B(II+2), C(ff-1)', null).rel) === '{"B":{"t":"II","lag":2},"C":{"t":"TT","lag":-1}}';
+  let lixo = false; try { const s = G.normalizaEstado({ acts: [{ id: '<b>', preds: 'x,y', rel: 5, d: {} }, null, 'z'], aba: 'nada', modo: 'q' }); lixo = s.acts.length === 1 && s.aba === 'dados' && s.modo === 'cpm'; } catch (e) { }
+  S().acts = [{ id: 'A', preds: ['B'], d: 1 }, { id: 'B', preds: ['A'], d: 1 }].map(x => Object.assign(G.novoAtv(x.id), x)); const ciclo = !!G.calcular().ciclo;
+  G.carregar(G.estadoExemploGuiado());
+  return { ok: c.erros.length === 2 && dash && pdm && lixo && ciclo, d: 'texto/vazio → ' + c.erros.length + ' erros · traço · PDM · lixo · ciclo' };
+});
+teste('praticar', async W => {
+  let bad = 0; for (let k = 0; k < 120; k++) { try { const ex = G.prGerar(['facil', 'medio', 'dificil'][k % 3], k % 2 ? 'pert' : 'cpm'); const g = G.prGab(ex); if (!g || !g.acts || !g.acts.length || g.erros.length) bad++; } catch (e) { bad++; } }
+  let erroOk = true; try { for (let k = 0; k < 30; k++) { G.prErroGerar(); const pe = W.eval('prErro'); if (!pe || !pe.id) { erroOk = false; break; } const n = pe.c.N.get(pe.id); const certo = { pdi: n.ES, pdt: n.EF, udi: n.LS, udt: n.LF, ft: n.FT, crit: n.crit ? 'sim' : 'nao' }[pe.cel]; if (pe.cel === 'crit' ? pe.valor === certo : Math.abs(pe.valor - certo) < 1e-9) { erroOk = false; break; } } } catch (e) { erroOk = false; }
+  return { ok: bad === 0 && erroOk, d: bad + ' exercícios inválidos em 120 · ache o erro: ' + (erroOk ? 'erro plantado difere do certo' : 'FALHA') };
+});
+teste('xlsx', async W => {
+  G.carregar(G.estadoExemploGuiado()); const blob = G.xlLivro([['T', [['a', 1], ['b', 2.5]]]]); const u8 = new Uint8Array(await blob.arrayBuffer());
+  const ok = u8[0] === 0x50 && u8[1] === 0x4B && blob.size > 600 && u8[u8.length - 22] === 0x50 && u8[u8.length - 21] === 0x4B && u8[u8.length - 20] === 5;
+  return { ok, d: 'zip de ' + blob.size + ' bytes com assinatura válida' };
+});
+teste('msproject', async W => {
+  const xml = '<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><Name>Teste</Name><MinutesPerDay>480</MinutesPerDay><Tasks><Task><UID>0</UID><Name>Teste</Name><Summary>1</Summary></Task><Task><UID>1</UID><Name>Projeto</Name><Duration>PT24H0M0S</Duration></Task><Task><UID>2</UID><Name>Fundação</Name><Duration>PT32H0M0S</Duration><PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag></PredecessorLink></Task><Task><UID>3</UID><Name>Instalações</Name><Duration>PT16H0M0S</Duration><PredecessorLink><PredecessorUID>1</PredecessorUID><Type>3</Type><LinkLag>4800</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task></Tasks></Project>';
+  const st = G.msProjectParaEstado(xml); const c = W.eval('(st) => { const g = state; state = st; try { return calcular(); } finally { state = g; } }')(st);
+  const ok = st.acts.length === 3 && st.acts[0].d === 3 && st.acts[1].d === 4 && st.acts[2].preds[0] === 'A' && st.acts[2].rel.A && st.acts[2].rel.A.t === 'II' && c.dur === 7;
+  return { ok, d: st.acts.map(a => a.id + ':' + a.d + '[' + G.textoPreds(a) + ']').join(' ') + ' → ' + c.dur };
+});
+
+async function rodar() {
+  lista.innerHTML = ''; resEl.textContent = 'rodando…'; resEl.className = 'res';
+  const fr = document.getElementById('app'); const W = fr.contentWindow;
+  const S = () => W.eval('state'), CO = () => W.eval('calcOut'), EX = () => W.eval('EXEMPLOS');
+  window.S = S; window.CO = CO; window.EX = EX;
+  const G = new Proxy({}, { get: (_, k) => { try { const v = W[k]; if (v !== undefined) return v; } catch (e) { } return W.eval(String(k)); } }); window.G = G;
+  const pronto = () => { try { return !!(CO() && EX()); } catch (e) { return false; } };
+  for (let i = 0; i < 100 && !pronto(); i++) await espera(100);
+  if (!pronto()) { resEl.textContent = 'A calculadora não carregou.'; resEl.className = 'res falha'; return; }
+  document.getElementById('versao').textContent = 'versão ' + (W.eval('VERSAO') || '?');
+  try { W.removeEventListener('beforeunload', W.onbeforeunload); } catch (e) { }
+  const salvo = W.localStorage.getItem('pertcpm.v2');
+  let falhas = 0;
+  for (const t of TESTES) {
+    const el = document.createElement('div'); el.className = 't roda'; el.innerHTML = '<b>' + t.nome + '</b><span>rodando…</span>'; lista.appendChild(el);
+    await espera(20);
+    let r; try { r = await t.fn(G); } catch (e) { r = { ok: false, d: 'exceção: ' + (e && e.message) }; }
+    el.className = 't ' + (r.ok ? 'ok' : 'falha'); el.innerHTML = '<b>' + t.nome + '</b><span>' + (r.ok ? 'passou' : 'FALHOU') + '</span><span class="d">' + r.d + '</span>';
+    if (!r.ok) falhas++;
+  }
+  try { if (salvo) W.localStorage.setItem('pertcpm.v2', salvo); G.carregar(G.normalizaEstado(JSON.parse(salvo || 'null') || G.estadoExemploGuiado())); } catch (e) { }
+  resEl.textContent = falhas ? falhas + ' teste(s) falharam de ' + TESTES.length : 'Todos os ' + TESTES.length + ' testes passaram.';
+  resEl.className = 'res ' + (falhas ? 'falha' : 'ok');
+}
+document.getElementById('rodar').onclick = rodar;
+document.getElementById('app').addEventListener('load', rodar);
+</script>
+</body>
+</html>

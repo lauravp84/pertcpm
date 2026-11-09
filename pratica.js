@@ -205,6 +205,7 @@ function renderPratica() {
     '<button class="bt" data-acao="dica">Dica</button>' +
     '<button class="bt" data-acao="gabarito">Mostrar gabarito</button>' +
     '<button class="bt" data-acao="limpar">Limpar respostas</button>' +
+    '<button class="bt" data-acao="relatorio">Relatório (PDF)</button>' +
     '<button class="bt" data-acao="link" style="margin-left:auto">Copiar <i>link</i> do exercício</button></div></div>';
   h += '<div id="prFeedback" aria-live="polite">' + prMsg + '</div>';
   corpo.innerHTML = h;
