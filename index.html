@@ -209,6 +209,12 @@ select.pr{width:96px;text-align:left}
   .resumo .fim{margin-left:0;text-align:right;grid-column:3}
 }
 
+
+/* ---------- explicação ao passar o mouse ---------- */
+[data-tip]{cursor:help}
+#tip{position:fixed;z-index:80;max-width:300px;background:var(--navy-escuro,#10264A);color:#fff;font-size:13px;line-height:1.45;padding:10px 12px;border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;white-space:pre-line}
+#tip[hidden]{display:none}
+.passos{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
 /* ---------- contato e rodapé ---------- */
 .contato{max-width:1280px;margin:0 auto;padding:0 20px 30px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .contato .txt{flex:1;min-width:250px;background:var(--superficie);border:1px solid var(--borda);border-radius:5px;padding:18px 20px}
@@ -279,7 +285,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 
 <nav class="abas noprint">
   <div class="nav-in" id="tabs">
-    <button class="aba on" data-p="dados"><span class="n">1</span>Dados</button>
+    <button class="aba on" data-p="inicio"><span class="n">0</span>Início</button>
+    <button class="aba" data-p="dados"><span class="n">1</span>Dados</button>
     <button class="aba" data-p="calend"><span class="n">2</span>Calendário e custos</button>
     <button class="aba" data-p="result"><span class="n">3</span>Resultados</button>
     <button class="aba" data-p="rede"><span class="n">4</span>Diagrama de rede</button>
@@ -296,27 +303,31 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <main>
 <div id="avisos"></div>
 
-<!-- ============ 1 · DADOS ============ -->
-<section class="painel on" id="p-dados">
+<!-- ============ INÍCIO ============ -->
+<section class="painel on" id="p-inicio">
   <div class="sec">
-    <h2>Atividades do projeto</h2>
-    <div class="acoes noprint">
-      <div class="segm" id="segModo">
-        <button data-m="cpm" class="on">CPM · duração única</button>
-        <button data-m="pert">PERT · 3 estimativas</button>
-      </div>
-    </div>
-    <p class="apoio">Informe o código, a duração e as atividades predecessoras (separadas por vírgula). O cálculo roda sozinho a cada alteração.</p>
+    <h2>Comece por aqui</h2>
+    <p class="apoio">Esta calculadora descobre quanto tempo um projeto leva, quais atividades não podem atrasar (o <b>caminho crítico</b>) e quanta folga têm as demais. É uma ferramenta de estudo: cada tela mostra o resultado e explica como ele foi obtido.</p>
   </div>
-
+  <div class="duas">
+    <div class="card"><div class="card-corpo">
+      <h3 style="font-size:21px">CPM · duração única</h3>
+      <p style="margin:6px 0 0">Use quando você <b>sabe quanto cada atividade dura</b>: obras, rotinas conhecidas, tarefas repetidas. Cada atividade tem um número só. Permite ainda analisar o custo de encurtar o prazo (compressão).</p>
+    </div></div>
+    <div class="card"><div class="card-corpo">
+      <h3 style="font-size:21px">PERT · 3 estimativas</h3>
+      <p style="margin:6px 0 0">Use quando a duração é <b>incerta</b>: projetos novos, pesquisa, software. Cada atividade tem três estimativas (otimista, mais provável, pessimista), e a calculadora dá a <b>chance de cumprir um prazo</b>.</p>
+    </div></div>
+  </div>
+  <div style="margin-top:18px">
   <details class="como noprint" id="comoPreencher" open>
-    <summary>Como preencher: passo a passo</summary>
+    <summary>Passo a passo para preencher a tabela (com exemplo)</summary>
     <div class="corpo">
       <ol>
         <li><b>Liste as atividades</b> do projeto, uma por linha, cada uma com um código curto (A, B, C…) e, se quiser, uma descrição.</li>
         <li><b>Informe a duração</b> de cada uma, na unidade escolhida no passo 2, Calendário e custos (dias, semanas ou meses). Se a duração é incerta, troque para o modo <b>PERT</b> e informe três estimativas: otimista (o), mais provável (m) e pessimista (p).</li>
         <li><b>Preencha as predecessoras:</b> os códigos das atividades que precisam terminar <i>antes</i> desta. Com mais de uma, separe por vírgula (<span class="mono">B, C</span>); se escrever com traço (<span class="mono">B-C</span>), a calculadora corrige para vírgula. Atividade sem predecessora começa o projeto: deixe em branco.</li>
-        <li><b>Veja o resultado.</b> O cálculo roda sozinho e o resumo no topo mostra a duração do projeto e o caminho crítico. As abas seguintes detalham: quadro de cálculo, diagrama de rede, Gantt, probabilidade de prazo (modo PERT) e compressão de prazo (custos).</li>
+        <li><b>Veja o resultado.</b> O cálculo roda sozinho e o resumo no topo mostra a duração do projeto e o caminho crítico. As abas seguintes detalham: quadro de cálculo, diagrama de rede, Gantt, probabilidade de prazo (modo PERT), compressão de prazo (custos) e recursos.</li>
         <li><b>Atalhos:</b> já tem a lista numa planilha? Use <i>Colar do Excel</i>. Prefere descrever o projeto em texto? Use <i>✦ Assistente</i>. Depois, confira sempre a tabela.</li>
         <li><b>Treine:</b> na aba <b>Praticar</b> você calcula à mão e a ferramenta corrige, com dicas e gabarito.</li>
       </ol>
@@ -332,6 +343,29 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       </div>
     </div>
   </details>
+  </div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo">
+    <h3 style="font-size:21px;margin-bottom:6px">Os passos da calculadora</h3>
+    <p class="hint" style="margin:0 0 6px">Siga a ordem das abas, da esquerda para a direita. Só o passo 1 é obrigatório: os outros mostram o que o cálculo descobriu.</p>
+    <ol style="list-style:none;padding:0;margin:0"><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="dados" style="min-width:190px;text-align:left">1 · Dados</button><span>Escolha CPM ou PERT e preencha a tabela com as atividades, as durações e as predecessoras.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="calend" style="min-width:190px;text-align:left">2 · Calendário e custos</button><span>Opcional: data de início, unidade de tempo, custos e notação das datas.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="result" style="min-width:190px;text-align:left">3 · Resultados</button><span>O quadro de cálculo: datas mais cedo e mais tarde, folgas e o caminho crítico.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="rede" style="min-width:190px;text-align:left">4 · Diagrama de rede</button><span>O projeto desenhado em caixas e setas, com o cálculo passo a passo (ida, volta e folga).</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="gantt" style="min-width:190px;text-align:left">5 · Gantt</button><span>As atividades no tempo, com a folga de cada uma.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="pert" style="min-width:190px;text-align:left">6 · Probabilidade</button><span>No modo PERT: a chance de cumprir um prazo, e a simulação de Monte Carlo.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="crash" style="min-width:190px;text-align:left">7 · Compressão</button><span>Quanto custa encurtar o projeto e qual o prazo mais barato.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="recursos" style="min-width:190px;text-align:left">8 · Recursos</button><span>A carga de pessoas ou máquinas ao longo do tempo, e como nivelar.</span></li><li style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:8px 0"><button class="bt mini" data-ir="pratica" style="min-width:190px;text-align:left">9 · Praticar</button><span>Exercícios para calcular à mão, com correção, dicas e gabarito.</span></li></ol>
+  </div></div>
+  <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+    <button class="bt primario" data-ir="dados" style="padding:13px 22px">Começar: preencher as atividades →</button>
+  </div>
+</section>
+
+<!-- ============ 1 · DADOS ============ -->
+<section class="painel" id="p-dados">
+  <div class="sec">
+    <h2>1 · Atividades do projeto</h2>
+    <div class="acoes noprint">
+      <div class="segm" id="segModo">
+        <button data-m="cpm" class="on">CPM · duração única</button>
+        <button data-m="pert">PERT · 3 estimativas</button>
+      </div>
+    </div>
+    <p class="apoio">Escolha o método e preencha a tabela com as atividades. O cálculo roda sozinho a cada alteração. <button class="bt mini noprint" data-ir="inicio" style="margin-left:6px">Precisa de ajuda? Veja o passo a passo</button></p>
+  </div>
 
   <div class="card">
     <div class="rolar"><table class="tab min560" id="tblDados"></table></div>
@@ -353,6 +387,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   </div>
 
   <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+    <button class="bt" data-ir="inicio">← Voltar: Início</button>
     <button class="bt" data-ir="calend">Próximo passo: Calendário e custos (opcional) →</button>
     <button class="bt primario" data-ir="result">Ver resultados →</button>
   </div>
@@ -424,7 +459,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
     <p class="apoio">Cada caixa traz <span class="sg" data-s="ES"></span> · <span class="sg" data-s="EF"></span> na linha de cima, <span class="sg" data-s="LS"></span> · <span class="sg" data-s="LF"></span> embaixo e a folga à direita. Atividades críticas em vermelho.</p>
   </div>
-  <p class="ler"><b class="t">Como ler:</b> cada caixa mostra, em cima, <span class="sga" data-s="ES"></span> (<b class="sg" data-s="ES"></b>) e <span class="sga" data-s="EF"></span> (<b class="sg" data-s="EF"></b>); embaixo, <span class="sga" data-s="LS"></span> (<b class="sg" data-s="LS"></b>) e <span class="sga" data-s="LF"></span> (<b class="sg" data-s="LF"></b>). No centro, o código e a duração; o selo à direita é a folga total. As setas vermelhas ligam as atividades críticas. Use <b>1 · <i>Forward</i></b>, <b>2 · <i>Backward</i></b> e <b>3 · Folga</b> para ver o cálculo em etapas, ou <b>▶ Animar</b>.</p>
+  <p class="ler"><b class="t">Dica:</b> passe o mouse sobre uma caixa, uma seta ou o INÍCIO/FIM para ver a explicação (no celular, toque). <b class="t">Como ler:</b> cada caixa mostra, em cima, <span class="sga" data-s="ES"></span> (<b class="sg" data-s="ES"></b>) e <span class="sga" data-s="EF"></span> (<b class="sg" data-s="EF"></b>); embaixo, <span class="sga" data-s="LS"></span> (<b class="sg" data-s="LS"></b>) e <span class="sga" data-s="LF"></span> (<b class="sg" data-s="LF"></b>). No centro, o código e a duração; o selo à direita é a folga total. As setas vermelhas ligam as atividades críticas. Use <b>1 · <i>Forward</i></b>, <b>2 · <i>Backward</i></b> e <b>3 · Folga</b> para ver o cálculo em etapas, ou <b>▶ Animar</b>.</p>
   <div id="passoTexto"></div>
   <div class="palco" id="stageRede"></div>
   <div class="legenda">
@@ -446,7 +481,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
     <p class="apoio">Barras de <span class="sg" data-s="ES"></span> a <span class="sg" data-s="EF"></span>. O tracejado mostra até onde a atividade pode se estender sem atrasar o projeto (<span class="sg" data-s="LF"></span>).</p>
   </div>
-  <p class="ler"><b class="t">Como ler:</b> cada barra cobre o intervalo entre <b class="sg" data-s="ES"></b> e <b class="sg" data-s="EF"></b> da atividade, com a duração escrita dentro. O contorno tracejado é a <b>folga</b>: até onde a atividade pode se estender sem atrasar o projeto. Barras vermelhas são críticas. Com <b>barras tardias</b> ligado, aparece em cinza quando a atividade começaria se fosse deixada para o último momento. Informe a data de início em “Calendário e custos” para ver datas reais.</p>
+  <p class="ler"><b class="t">Dica:</b> passe o mouse sobre uma barra ou uma seta para ver a explicação (no celular, toque). <b class="t">Como ler:</b> cada barra cobre o intervalo entre <b class="sg" data-s="ES"></b> e <b class="sg" data-s="EF"></b> da atividade, com a duração escrita dentro. O contorno tracejado é a <b>folga</b>: até onde a atividade pode se estender sem atrasar o projeto. Barras vermelhas são críticas. Com <b>barras tardias</b> ligado, aparece em cinza quando a atividade começaria se fosse deixada para o último momento. Informe a data de início em “Calendário e custos” para ver datas reais.</p>
   <div class="palco" id="stageGantt"></div>
   <div class="legenda">
     <span><i style="background:var(--critico)"></i>Crítica</span>
@@ -684,6 +719,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="dlg-f" id="dlgRodape"></div>
 </dialog>
 
+<div id="tip" role="tooltip" hidden></div>
 <script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script>
 <script src="app.js"></script>
 </body>

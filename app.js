@@ -35,7 +35,7 @@ function estadoVazio() {
     nome: 'Novo projeto', modo: 'cpm', inicio: '', unidade: 'd', uteis: 0,
     custoInd: '', custoDir: '', prazoAlvo: '',
     notacao: 'disc', recModo: 'alisar', recLim: '', recRegra: 'folga',
-    aba: 'dados', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
+    aba: 'inicio', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
     acts: [novoAtv('A'), novoAtv('B'), novoAtv('C')]
   };
 }
@@ -470,7 +470,7 @@ function renderRede() {
 
   const arestas = [];
   c.acts.forEach(n => {
-    n.preds.forEach(p => { const np = c.N.get(p); const r = n.rel.get(p); arestas.push({ de: p, para: n.id, crit: n.crit && np.crit && c.aperta(p, n.id), fantasma: false, rot: r && (r.t !== 'TI' || r.lag) ? (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + Math.abs(r.lag) : '') : '' }); });
+    n.preds.forEach(p => { const np = c.N.get(p); const r = n.rel.get(p), cr = n.crit && np.crit && c.aperta(p, n.id); arestas.push({ de: p, para: n.id, crit: cr, tip: tipLigacao(p, n.id, r || REL0, cr), fantasma: false, rot: r && (r.t !== 'TI' || r.lag) ? (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + Math.abs(r.lag) : '') : '' }); });
     if (!n.preds.length) arestas.push({ de: '__ini', para: n.id, crit: n.crit, fantasma: true });
     if (!n.succs.length) arestas.push({ de: n.id, para: '__fim', crit: n.crit, fantasma: true });
   });
@@ -523,7 +523,8 @@ function renderRede() {
     }
     const ult = pos.get(ar.cadeia[ar.cadeia.length - 1]);
     const rot = ar.rot ? '<text x="' + (ult.x - 8) + '" y="' + (ult.y + ult.h / 2 - 7) + '" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="' + cor + '" stroke="' + C.sup + '" stroke-width="3" paint-order="stroke">' + esc(ar.rot) + '</text>' : '';
-    return '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + (ar.crit ? 2.2 : 1.3) + '"' + (ar.fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (ar.fantasma ? 'arf' : (ar.crit ? 'arc' : 'ar')) + ')"/>' + rot;
+    return '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + (ar.crit ? 2.2 : 1.3) + '"' + (ar.fantasma ? ' stroke-dasharray="5 4"' : '') + ' marker-end="url(#' + (ar.fantasma ? 'arf' : (ar.crit ? 'arc' : 'ar')) + ')"/>' + rot +
+      (ar.tip ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="14" data-tip="' + esc(ar.tip) + '"/>' : '');
   };
 
   let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg) + '" height="' + Math.round(altura) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
@@ -537,7 +538,7 @@ function renderRede() {
 
   [['__ini', 'INÍCIO'], ['__fim', 'FIM']].forEach(par => {
     const p = pos.get(par[0]);
-    s += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + C.fantasmaFundo + '" stroke="' + C.fantasmaBorda + '" stroke-width="1.5" stroke-dasharray="5 4"/>';
+    s += '<rect data-tip="' + esc(par[0] === '__ini' ? 'INÍCIO: marcador do começo do projeto. As atividades ligadas a ele não têm predecessora e começam no instante zero.' : 'FIM: marcador do término do projeto. As atividades ligadas a ele não têm sucessora; a mais demorada define a duração do projeto.') + '" x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + C.fantasmaFundo + '" stroke="' + C.fantasmaBorda + '" stroke-width="1.5" stroke-dasharray="5 4"/>';
     s += '<text x="' + (p.x + p.w / 2) + '" y="' + (p.y + p.h / 2 + 4) + '" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" letter-spacing="1.5" fill="' + C.apagado + '">' + par[1] + '</text>';
   });
 
@@ -546,7 +547,7 @@ function renderRede() {
     const p = pos.get(n.id);
     const corB = n.crit ? C.critico : C.neutro;
     const fundo = n.crit ? C.criticoFundo : '#FFFFFF';
-    s += '<g>';
+    s += '<g data-tip="' + esc(tipAtiv(n)) + '">';
     s += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + fundo + '" stroke="' + corB + '" stroke-width="1.5"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + 1) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + p.h - 24) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
@@ -626,10 +627,10 @@ function renderGantt() {
     s += '<text x="' + (LBL - 4) + '" y="' + (yc + (state.inicio ? -1 : 5)) + '" text-anchor="end"' + mono + ' font-size="15" font-weight="600" fill="' + (n.crit ? C.critico : C.tinta) + '">' + esc(n.id) + '</text>';
     if (n.nome) s += '<text x="' + (LBL - 4 - 12 - 9 * String(n.id).length) + '" y="' + (yc + (state.inicio ? -1 : 5)) + '" text-anchor="end" font-size="12" fill="' + C.apagado + '">' + esc(n.nome.length > 19 ? n.nome.slice(0, 18) + '…' : n.nome) + '</text>';
     if (state.inicio) s += '<text x="' + (LBL - 4) + '" y="' + (yc + 12) + '" text-anchor="end"' + mono + ' font-size="12" fill="' + C.apagadinho + '">' + esc(faixaDatas(n)) + '</text>';
-    if (state.gFolga && n.FT > EPS) s += '<rect x="' + sx(n.EF) + '" y="' + (y + 4) + '" width="' + Math.max(2, sx(n.EF + n.FT) - sx(n.EF)) + '" height="8" rx="2" fill="none" stroke="' + C.folga + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
+    if (state.gFolga && n.FT > EPS) s += '<rect data-tip="' + esc('Folga total de ' + fmt(n.FT) + ' ' + uni(n.FT) + ' de ' + n.id + ': a barra tracejada mostra até onde ela pode escorregar sem atrasar o projeto.') + '" x="' + sx(n.EF) + '" y="' + (y + 4) + '" width="' + Math.max(2, sx(n.EF + n.FT) - sx(n.EF)) + '" height="8" rx="2" fill="none" stroke="' + C.folga + '" stroke-width="1.2" stroke-dasharray="4 3"/>';
     if (state.gTarde && n.FT > EPS) s += '<rect x="' + sx(n.LS) + '" y="' + (y + 16) + '" width="' + Math.max(2, sx(n.LF) - sx(n.LS)) + '" height="5" rx="2" fill="' + C.neutro + '"/>';
     const bw = Math.max(3, sx(n.EF) - sx(n.ES));
-    s += '<rect x="' + sx(n.ES) + '" y="' + (y + 5) + '" width="' + bw + '" height="19" rx="3" fill="' + cor + '"/>';
+    s += '<rect data-tip="' + esc(tipAtiv(n)) + '" x="' + sx(n.ES) + '" y="' + (y + 5) + '" width="' + bw + '" height="19" rx="3" fill="' + cor + '"/>';
     if (bw > 26) s += '<text x="' + (sx(n.ES) + 7) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="#FFFFFF">' + fmt(n.dur) + '</text>';
     else s += '<text x="' + (sx(n.EF) + 6) + '" y="' + (y + 18) + '"' + mono + ' font-size="12" fill="' + C.apagado + '">' + fmt(n.dur) + '</text>';
   });
@@ -639,7 +640,8 @@ function renderGantt() {
       const r = n.rel.get(p) || REL0, pn = c.N.get(p);
       const y1 = yOf(p), y2 = yOf(n.id), xa = sx(r.t === 'II' || r.t === 'IT' ? pn.ES : pn.EF), xb = sx(r.t === 'TT' || r.t === 'IT' ? n.EF : n.ES);
       const mx = Math.max(xa + 8, xb - 8), volta = xb < mx;
-      s += '<path d="M' + xa + ',' + y1 + ' L' + mx + ',' + y1 + ' L' + mx + ',' + y2 + ' L' + (volta ? xb + 2 : xb - 2) + ',' + y2 + '" fill="none" stroke="' + C.aresta + '" stroke-width="1.1" marker-end="url(#gs)" opacity="0.75"/>';
+      s += '<path d="M' + xa + ',' + y1 + ' L' + mx + ',' + y1 + ' L' + mx + ',' + y2 + ' L' + (volta ? xb + 2 : xb - 2) + ',' + y2 + '" fill="none" stroke="' + C.aresta + '" stroke-width="1.1" marker-end="url(#gs)" opacity="0.75"/>' +
+        '<path d="M' + xa + ',' + y1 + ' L' + mx + ',' + y1 + ' L' + mx + ',' + y2 + ' L' + (volta ? xb + 2 : xb - 2) + ',' + y2 + '" fill="none" stroke="transparent" stroke-width="12" data-tip="' + esc(tipLigacao(p, n.id, r, n.crit && pn.crit && c.aperta(p, n.id))) + '"/>';
     }));
   }
   s += '</svg>';
@@ -697,6 +699,61 @@ function renderPert() {
   });
   $('#tblPert').innerHTML = h + '</tbody>';
   renderMC();
+}
+
+/* ============================================================
+   EXPLICAÇÕES AO PASSAR O MOUSE (diagrama de rede e Gantt)
+   ============================================================ */
+const REL_FRASE = {
+  TI: ['término-início', 'só começa depois que {de} terminar'], II: ['início-início', 'só começa depois que {de} começar'],
+  TT: ['término-término', 'só termina depois que {de} terminar'], IT: ['início-término', 'só termina depois que {de} começar']
+};
+function tipLigacao(de, para, r, crit) {
+  const f = REL_FRASE[r.t] || REL_FRASE.TI;
+  let s = de + ' → ' + para + ' (' + f[0] + '): ' + para + ' ' + f[1].replace('{de}', de) + '.';
+  if (r.lag > 0) s += ' Com espera obrigatória de ' + fmt(r.lag) + ' ' + uni(r.lag) + '.';
+  else if (r.lag < 0) s += ' Com antecipação de ' + fmt(-r.lag) + ' ' + uni(-r.lag) + '.';
+  return s + (crit ? ' Ligação crítica: sem folga, um atraso em ' + de + ' atrasa ' + para + ' e o projeto.' : ' Há folga nesta ligação: ' + para + ' pode esperar sem atrasar o projeto.');
+}
+function tipAtiv(n) {
+  const L = [];
+  L.push(n.id + (n.nome ? ' · ' + n.nome : '') + ': dura ' + fmt(n.dur) + ' ' + uni(n.dur) + '.');
+  L.push(sg('ES') + ' ' + fmt(n.ES) + ' e ' + sg('EF') + ' ' + fmt(n.EF) + ' (' + sgNome('ES') + ' e ' + sgNome('EF') + '): o mais cedo que ela pode começar e terminar.');
+  L.push(sg('LS') + ' ' + fmt(n.LS) + ' e ' + sg('LF') + ' ' + fmt(n.LF) + ' (' + sgNome('LS') + ' e ' + sgNome('LF') + '): o mais tarde que pode começar e terminar sem atrasar o projeto.');
+  L.push(n.crit ? 'Folga total 0: atividade CRÍTICA. Qualquer atraso nela atrasa o projeto inteiro.' : 'Folga total ' + fmt(n.FT) + ': pode atrasar até ' + fmt(n.FT) + ' ' + uni(n.FT) + ' sem atrasar o projeto.');
+  L.push(n.preds.length ? 'Depende de: ' + n.preds.join(', ') + '.' : 'Não tem predecessora: começa o projeto.');
+  return L.join('\n');
+}
+function ligaTips() {
+  const tip = $('#tip'); if (!tip) return;
+  const mostra = (txt, x, y) => {
+    tip.textContent = txt; tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let px = x + 16, py = y + 18;
+    if (px + w > innerWidth - 8) px = Math.max(8, x - w - 12);
+    if (py + h > innerHeight - 8) py = Math.max(8, y - h - 12);
+    tip.style.left = px + 'px'; tip.style.top = py + 'px';
+  };
+  const alvo = e => e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  document.addEventListener('mouseover', e => { const t = alvo(e); if (t) mostra(t.getAttribute('data-tip'), e.clientX, e.clientY); else tip.hidden = true; });
+  document.addEventListener('mousemove', e => { if (tip.hidden) return; const t = alvo(e); if (t) mostra(t.getAttribute('data-tip'), e.clientX, e.clientY); else tip.hidden = true; });
+  document.addEventListener('mouseout', e => { if (!e.relatedTarget) tip.hidden = true; });
+  document.addEventListener('click', e => { const t = alvo(e); if (t) mostra(t.getAttribute('data-tip'), e.clientX, e.clientY); else tip.hidden = true; });   /* toque no celular */
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') tip.hidden = true; });
+}
+
+/* ---------- sequência dos passos: botões Voltar / Próximo no fim de cada aba ---------- */
+const PASSOS = [['inicio', 'Início'], ['dados', 'Dados'], ['calend', 'Calendário e custos'], ['result', 'Resultados'], ['rede', 'Diagrama de rede'], ['gantt', 'Gantt'], ['pert', 'Probabilidade'], ['crash', 'Compressão'], ['recursos', 'Recursos'], ['pratica', 'Praticar']];
+const PASSO_PROX = { result: 'Ver o diagrama de rede', rede: 'Ver o Gantt', gantt: 'Probabilidade de prazo', pert: 'Compressão de prazo', crash: 'Recursos', recursos: 'Praticar' };
+function montaPassos() {
+  ['result', 'rede', 'gantt', 'pert', 'crash', 'recursos', 'pratica'].forEach(p => {
+    const painel = $('#p-' + p); if (!painel || painel.querySelector('.passos')) return;
+    const i = PASSOS.findIndex(x => x[0] === p), ant = PASSOS[i - 1], prox = PASSOS[i + 1];
+    let h = '<div class="passos noprint">';
+    if (ant) h += '<button class="bt" data-ir="' + ant[0] + '">← Voltar: ' + ant[1] + '</button>';
+    if (prox) h += '<button class="bt primario" data-ir="' + prox[0] + '">Próximo passo: ' + (PASSO_PROX[p] || prox[1]) + ' →</button>';
+    painel.insertAdjacentHTML('beforeend', h + '</div>');
+  });
 }
 
 /* ============================================================
@@ -1612,7 +1669,7 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'recursos', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['inicio', 'dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'recursos', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
   st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
   st.recModo = st.recModo === 'limite' ? 'limite' : 'alisar';
   st.recRegra = ['folga', 'maior', 'recurso'].indexOf(st.recRegra) >= 0 ? st.recRegra : 'folga';
@@ -1760,6 +1817,7 @@ function ligar() {
 
   $('#btnContato').onclick = dlgContato;
   $('#btnMC').onclick = mcRodar;
+  montaPassos(); ligaTips();
   $('#btnRec').onclick = recRodar;
   $('#recModo').onchange = e => { state.recModo = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
   $('#recRegra').onchange = e => { state.recRegra = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
