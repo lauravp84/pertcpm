@@ -1824,6 +1824,7 @@ function ligar() {
   $('#recLim').oninput = e => { state.recLim = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
   $('#tblRec').addEventListener('input', e => { const i = e.target.getAttribute('data-rec'); if (i === null || !state.acts[+i]) return; state.acts[+i].rec = e.target.value; renderRec(); gravarEstado(); });
   $('#btnExemploMini').onclick = carregarExemploMini;
+  $('#btnHeroEx').onclick = () => { carregarExemploMini(); irPara('result'); scrollTo(0, 0); };
   /* lembra se a pessoa fechou o passo a passo */
   const det = $('#comoPreencher');
   try { if (localStorage.getItem('pertcpm.ajuda') === 'fechada') det.open = false; } catch (e) { }
