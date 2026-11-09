@@ -17,8 +17,8 @@ const num = v => {
 };
 const CASAS = 2;
 const r2 = x => Math.round(x * Math.pow(10, CASAS)) / Math.pow(10, CASAS);
-const fmt = x => { if (!isFinite(x)) return '—'; const v = r2(x); return (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(CASAS).replace('.', ',')); };
-const money = x => (isFinite(x) ? x.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—');
+const fmt = x => { if (!isFinite(x)) return '—'; const v = r2(x); return (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(CASAS).replace('.', DEC)); };
+const money = x => (isFinite(x) ? x.toLocaleString(LOCALE, { maximumFractionDigits: 2 }) : '—');
 const EPS = 1e-9;
 const TETO_CAMINHOS = 300;
 const TETO_PASSOS = 5000;   /* trava de segurança; na prática a compressão para quando não há mais o que comprimir */
@@ -36,7 +36,7 @@ function estadoVazio() {
   return {
     nome: 'Novo projeto', modo: 'cpm', inicio: '', unidade: 'd', uteis: 0,
     custoInd: '', custoDir: '', prazoAlvo: '',
-    notacao: 'disc', recModo: 'alisar', recLim: '', recLim2: '', recLim3: '', recRegra: 'folga', recNomes: ['', '', ''],
+    notacao: (typeof LANG !== 'undefined' && LANG !== 'pt') ? 'intl' : 'disc', recModo: 'alisar', recLim: '', recLim2: '', recLim3: '', recRegra: 'folga', recNomes: ['', '', ''],
     statusT: '', marcos: [], baseline: null, ccCorte: 50, ccMetodo: 'metade', ccAvanco: '', ccConsumo: '', mcDist: 'beta',
     aba: 'inicio', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
     acts: [novoAtv('A'), novoAtv('B'), novoAtv('C')]
@@ -306,7 +306,7 @@ function dataFim(ef) {
   return diaDoPeriodo(k - 1);                         /* último dia trabalhado */
 }
 const dataDe = dataInicio;
-const fmtData = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const fmtData = d => d.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' });
 const rotuloData = i => { const d = dataInicio(i); return d ? fmtData(d) : fmt(i); };
 function faixaDatas(n) {
   const a = dataInicio(n.ES); if (!a) return '';
@@ -395,7 +395,7 @@ function textoPreds(a) {
   return (a.preds || []).map(p => {
     const r = a.rel && Object.prototype.hasOwnProperty.call(a.rel, p) ? a.rel[p] : null;
     if (!r) return p;
-    return p + '(' + (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + String(Math.abs(r.lag)).replace('.', ',') : '') + ')';
+    return p + '(' + (r.t === 'TI' ? '' : relVis(r.t)) + (r.lag ? (r.lag > 0 ? '+' : '-') + String(Math.abs(r.lag)).replace('.', DEC) : '') + ')';
   }).join(', ');
 }
 const codigosAtuais = () => new Set(state.acts.map(x => String(x.id).trim().toUpperCase()));
@@ -419,7 +419,7 @@ function renderResumo() {
   poe('#rCrit', vazio ? '—' : (c.critSeq.join(' → ') || '—'));
   if (vazio) { $('#rFim').textContent = '—'; return; }
   const d = dataFim(c.dur);
-  $('#rFim').textContent = d ? d.toLocaleDateString('pt-BR') : fmt(c.dur) + ' ' + uni(c.dur);
+  $('#rFim').textContent = d ? d.toLocaleDateString(LOCALE) : fmt(c.dur) + ' ' + uni(c.dur);
 }
 
 function renderAvisos() {
@@ -485,7 +485,7 @@ function renderRede() {
 
   const arestas = [];
   c.acts.forEach(n => {
-    n.preds.forEach(p => { const np = c.N.get(p); const r = n.rel.get(p), cr = n.crit && np.crit && c.aperta(p, n.id); arestas.push({ de: p, para: n.id, crit: cr, tip: tipLigacao(p, n.id, r || REL0, cr), fantasma: false, rot: r && (r.t !== 'TI' || r.lag) ? (r.t === 'TI' ? '' : r.t) + (r.lag ? (r.lag > 0 ? '+' : '-') + Math.abs(r.lag) : '') : '' }); });
+    n.preds.forEach(p => { const np = c.N.get(p); const r = n.rel.get(p), cr = n.crit && np.crit && c.aperta(p, n.id); arestas.push({ de: p, para: n.id, crit: cr, tip: tipLigacao(p, n.id, r || REL0, cr), fantasma: false, rot: r && (r.t !== 'TI' || r.lag) ? (r.t === 'TI' ? '' : relVis(r.t)) + (r.lag ? (r.lag > 0 ? '+' : '-') + Math.abs(r.lag) : '') : '' }); });
     if (!n.preds.length) arestas.push({ de: '__ini', para: n.id, crit: n.crit, fantasma: true });
     if (!n.succs.length) arestas.push({ de: n.id, para: '__fim', crit: n.crit, fantasma: true });
   });
@@ -699,7 +699,7 @@ function renderPert() {
   $('#saidaProb').innerHTML =
     '<div class="kpis">' +
     '<div class="kpi"><div class="olho">Z</div><div class="v">' + (isFinite(z) ? fmt(z) : '—') + '</div></div>' +
-    '<div class="kpi"><div class="olho">Probabilidade</div><div class="v navy">' + (P * 100).toFixed(1).replace('.', ',') + '%</div></div>' +
+    '<div class="kpi"><div class="olho">Probabilidade</div><div class="v navy">' + (P * 100).toFixed(1).replace('.', DEC) + '%</div></div>' +
     '<div class="kpi"><div class="olho">σ do caminho</div><div class="v">' + fmt(sgm) + '</div></div>' +
     '</div>' +
     '<p class="hint" style="font-family:var(--mono)">Z = (' + fmt(X) + ' − ' + fmt(mu) + ') ÷ ' + fmt(sgm) + '</p>';
@@ -805,7 +805,7 @@ function toastAcao(msg, rotulo, fn) {
    ============================================================ */
 let mcRes = null, mcSig = '';
 const mcAssinatura = () => JSON.stringify([state.modo, state.mcDist, state.acts.map(a => [a.id, a.o, a.m, a.p, a.preds, a.rel, a.prob])]);
-function mcPct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
+function mcPct(x) { return (x * 100).toFixed(1).replace('.', DEC) + '%'; }
 function mcHistograma(r, mu, sg, X) {
   const W = 360, H = 200, PX = 14, PB = 26, PT = 10, NB = 26;
   const a = r.min, b = r.max > r.min ? r.max : r.min + 1, bw = (b - a) / NB;
@@ -850,9 +850,9 @@ function renderMC() {
     '<div class="kpi"><div class="olho">Chance de até ' + fmt(X) + '</div><div class="v navy">' + mcPct(pMC) + '</div></div>' +
     '</div>';
   h += '<div style="margin-top:12px">' + mcHistograma(r, mu, sg, X) + '</div>';
-  h += '<p class="hint">' + r.N.toLocaleString('pt-BR') + ' rodadas · distribuição ' + (MC_DIST_NOME[r.dist] || r.dist) + ' · semente ' + r.seed + (r.temRamo ? ' · com ramos probabilísticos (atividades que podem não ocorrer)' : '') + ' · barras = simulação · tracejado = aproximação normal do PERT · linha vermelha = prazo desejado (' + fmt(X) + ')</p>';
+  h += '<p class="hint">' + r.N.toLocaleString(LOCALE) + ' rodadas · distribuição ' + (MC_DIST_NOME[r.dist] || r.dist) + ' · semente ' + r.seed + (r.temRamo ? ' · com ramos probabilísticos (atividades que podem não ocorrer)' : '') + ' · barras = simulação · tracejado = aproximação normal do PERT · linha vermelha = prazo desejado (' + fmt(X) + ')</p>';
   const dif = r.media - mu;
-  h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> em ' + r.N.toLocaleString('pt-BR') + ' rodadas, <b>' + mcPct(pMC) + '</b> terminaram em até <b>' + fmt(X) + ' ' + uni(X) + '</b>; a aproximação normal do PERT dá <b>' + mcPct(pN) + '</b>.' +
+  h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> em ' + r.N.toLocaleString(LOCALE) + ' rodadas, <b>' + mcPct(pMC) + '</b> terminaram em até <b>' + fmt(X) + ' ' + uni(X) + '</b>; a aproximação normal do PERT dá <b>' + mcPct(pN) + '</b>.' +
     (dif > Math.max(0.01 * mu, 0.05) ? ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou acima do prazo esperado do PERT (<b>' + fmt(mu) + '</b>): com caminhos quase tão longos quanto o crítico, o projeto atrasa quando <i>qualquer</i> deles atrasa, e o PERT clássico só olha o caminho crítico esperado.' : ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou próximo do esperado do PERT (<b>' + fmt(mu) + '</b>): o caminho crítico domina a rede.') + '</p>';
   h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Confiança</th><th class="dir">Simulação</th><th class="dir">Normal (PERT)</th></tr></thead><tbody>';
   [50, 75, 80, 90, 95, 99].forEach(q => { h += '<tr><td>' + q + '%</td><td class="dir"><b>' + fmt(r.pct(q / 100)) + '</b></td><td class="dir">' + (sg > EPS ? fmt(mu + zInv(q / 100) * sg) : fmt(mu)) + '</td></tr>'; });
@@ -1294,9 +1294,9 @@ const EXEMPLOS = [
    Também é o estado da primeira visita: números com sentido, sem avisos sobre uma tabela vazia. */
 function estadoExemploGuiado() {
   const st = estadoVazio();
-  st.nome = 'Exemplo guiado';
+  st.nome = traduzNome('Exemplo guiado');
   st.acts = [['A', 'Projeto', 3, []], ['B', 'Fundação', 4, ['A']], ['C', 'Instalações', 2, ['A']], ['D', 'Entrega', 5, ['B', 'C']]].map(x => {
-    const o = novoAtv(x[0], x[1]); o.d = x[2]; o.o = x[2]; o.m = x[2]; o.p = x[2]; o.preds = x[3]; return o;
+    const o = novoAtv(x[0], traduzNome(x[1])); o.d = x[2]; o.o = x[2]; o.m = x[2]; o.p = x[2]; o.preds = x[3]; return o;
   });
   return st;
 }
@@ -1309,12 +1309,12 @@ function carregarExemplo(i) {
   const ex = EXEMPLOS[i]; if (!ex) return;
   if (typeof registraUso === 'function') registraUso('ex', ex.nome);
   const st = estadoVazio();
-  st.nome = ex.nome; st.modo = ex.modo; st.unidade = ex.unidade || 'd';
+  st.nome = traduzNome(ex.nome); st.modo = ex.modo; st.unidade = ex.unidade || 'd';
   st.custoDir = ex.custoDir || ''; st.custoInd = ex.custoInd || '';
   if (ex.recLim) { st.recLim = ex.recLim; st.recModo = 'limite'; }
   if (ex.recNomes) st.recNomes = ex.recNomes.slice();
   st.acts = ex.acts.map(a => {
-    const o = novoAtv(a[0], a[1]);
+    const o = novoAtv(a[0], traduzNome(a[1]));
     if (ex.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; o.d = a[2][1]; }
     else { o.d = a[2]; o.o = a[2]; o.m = a[2]; o.p = a[2]; }
     const pr = leiaPredsRel(a[3].join(', '), null); o.preds = pr.preds; o.rel = pr.rel;
@@ -1376,7 +1376,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v32';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v33';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
@@ -1589,7 +1589,7 @@ function contarVisita() {
     .then(d => {
       if (!d || !d.configurado || !d.total) return;
       const el = $('#visitas'); if (!el) return;
-      el.querySelector('b').textContent = Number(d.total).toLocaleString('pt-BR');
+      el.querySelector('b').textContent = Number(d.total).toLocaleString(LOCALE);
       const rot = $('#visitasRot'); if (rot) rot.textContent = Number(d.total) === 1 ? ' visita' : ' visitas';
       el.hidden = false;
     })

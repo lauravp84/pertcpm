@@ -104,19 +104,19 @@ function renderControle() {
     if (ev.temReal) {
       h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Indicador</th><th class="dir">Valor</th><th>Leitura</th></tr></thead><tbody>' +
         '<tr><td>SV = EV − PV</td><td class="dir">' + un(ev.SV) + '</td><td class="txt">' + (ev.SV < -1e-9 ? 'atrasado em valor' : ev.SV > 1e-9 ? 'adiantado' : 'no prazo') + '</td></tr>' +
-        '<tr><td>SPI = EV ÷ PV</td><td class="dir">' + (isFinite(ev.SPI) ? ev.SPI.toFixed(2) : '—') + '</td><td class="txt">' + (isFinite(ev.SPI) ? (ev.SPI < 0.999 ? 'a cada 1 planejado, só ' + ev.SPI.toFixed(2) + ' foi feito' : 'ritmo igual ou melhor que o plano') : 'nada planejado até aqui') + '</td></tr>' +
-        '<tr><td>Tempo agregado (ES)</td><td class="dir">' + fmt(ev.ES) + '</td><td class="txt">o trabalho feito equivale ao plano do período ' + fmt(ev.ES) + (isFinite(ev.SPIt) ? ' (SPI<sub>t</sub> = ' + ev.SPIt.toFixed(2) + ')' : '') + '</td></tr>' +
+        '<tr><td>SPI = EV ÷ PV</td><td class="dir">' + (isFinite(ev.SPI) ? ev.SPI.toFixed(2).replace('.', DEC) : '—') + '</td><td class="txt">' + (isFinite(ev.SPI) ? (ev.SPI < 0.999 ? 'a cada 1 planejado, só ' + ev.SPI.toFixed(2).replace('.', DEC) + ' foi feito' : 'ritmo igual ou melhor que o plano') : 'nada planejado até aqui') + '</td></tr>' +
+        '<tr><td>Tempo agregado (ES)</td><td class="dir">' + fmt(ev.ES) + '</td><td class="txt">o trabalho feito equivale ao plano do período ' + fmt(ev.ES) + (isFinite(ev.SPIt) ? ' (SPI<sub>t</sub> = ' + ev.SPIt.toFixed(2).replace('.', DEC) + ')' : '') + '</td></tr>' +
         '<tr><td>Prazo previsto</td><td class="dir"><b>' + (isFinite(ev.prazoPrev) ? fmt(ev.prazoPrev) + ' ' + uni(ev.prazoPrev) : '—') + '</b></td><td class="txt">plano: ' + fmt(c.dur) + ' ' + uni(c.dur) + (isFinite(ev.prazoPrev) ? ' (' + (ev.prazoPrev > c.dur + 1e-9 ? '+' : '') + fmt(ev.prazoPrev - c.dur) + ')' : '') + '</td></tr>' +
         (ev.temGasto ? '<tr><td>CV = EV − AC</td><td class="dir">' + un(ev.CV) + '</td><td class="txt">' + (ev.CV < -1e-9 ? 'acima do orçamento' : ev.CV > 1e-9 ? 'abaixo do orçamento' : 'no orçamento') + '</td></tr>' +
-          '<tr><td>CPI = EV ÷ AC</td><td class="dir">' + (isFinite(ev.CPI) ? ev.CPI.toFixed(2) : '—') + '</td><td class="txt">' + (isFinite(ev.CPI) ? 'cada 1 gasto rendeu ' + ev.CPI.toFixed(2) + ' de valor' : '—') + '</td></tr>' +
+          '<tr><td>CPI = EV ÷ AC</td><td class="dir">' + (isFinite(ev.CPI) ? ev.CPI.toFixed(2).replace('.', DEC) : '—') + '</td><td class="txt">' + (isFinite(ev.CPI) ? 'cada 1 gasto rendeu ' + ev.CPI.toFixed(2).replace('.', DEC) + ' de valor' : '—') + '</td></tr>' +
           '<tr><td>EAC = BAC ÷ CPI</td><td class="dir"><b>' + un(ev.EAC) + '</b></td><td class="txt">custo final previsto (orçamento: ' + un(ev.BAC) + ')</td></tr>' +
           '<tr><td>ETC = EAC − AC</td><td class="dir">' + un(ev.ETC) + '</td><td class="txt">quanto ainda falta gastar</td></tr>' +
           '<tr><td>VAC = BAC − EAC</td><td class="dir">' + un(ev.VAC) + '</td><td class="txt">' + (ev.VAC < -1e-9 ? 'estouro previsto' : 'sobra prevista') + '</td></tr>' : '') +
         '</tbody></table></div>';
       const frases = [];
-      frases.push('No período <b>' + fmt(ev.T) + '</b>, o plano previa <b>' + pct(ev.pctPlan) + '</b> do projeto pronto e foi feito <b>' + pct(ev.pctReal) + '</b>' + (isFinite(ev.SPI) ? ' (SPI ' + ev.SPI.toFixed(2) + ')' : '') + '.');
+      frases.push('No período <b>' + fmt(ev.T) + '</b>, o plano previa <b>' + pct(ev.pctPlan) + '</b> do projeto pronto e foi feito <b>' + pct(ev.pctReal) + '</b>' + (isFinite(ev.SPI) ? ' (SPI ' + ev.SPI.toFixed(2).replace('.', DEC) + ')' : '') + '.');
       if (isFinite(ev.prazoPrev)) frases.push('Mantido este ritmo, o projeto termina em <b>' + fmt(ev.prazoPrev) + ' ' + uni(ev.prazoPrev) + '</b>' + (ev.prazoPrev > c.dur + 0.05 ? ', <b>' + fmt(ev.prazoPrev - c.dur) + ' ' + uni(ev.prazoPrev - c.dur) + ' de atraso</b>.' : ', dentro do prazo.'));
-      if (ev.temGasto && isFinite(ev.CPI)) frases.push(ev.CPI < 0.999 ? 'Cada 1 gasto rendeu só ' + ev.CPI.toFixed(2) + ': o custo final tende a <b>' + un(ev.EAC) + '</b>, ' + un(-ev.VAC) + ' acima do orçamento.' : 'O gasto está rendendo: custo final previsto de <b>' + un(ev.EAC) + '</b>.');
+      if (ev.temGasto && isFinite(ev.CPI)) frases.push(ev.CPI < 0.999 ? 'Cada 1 gasto rendeu só ' + ev.CPI.toFixed(2).replace('.', DEC) + ': o custo final tende a <b>' + un(ev.EAC) + '</b>, ' + un(-ev.VAC) + ' acima do orçamento.' : 'O gasto está rendendo: custo final previsto de <b>' + un(ev.EAC) + '</b>.');
       h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> ' + frases.join(' ') + '</p>';
     } else h += '<p class="hint">Informe o <b>% concluído real</b> das atividades para calcular o valor agregado e os índices.</p>';
   }
@@ -171,7 +171,7 @@ function renderBase(c) {
 function baseSalvar() {
   const c = calcOut; if (!c || !c.acts.length || c.erros.length) { alerta('Corrija os erros dos dados antes de salvar a linha de base.'); return; }
   const acts = {}; c.acts.forEach(n => { acts[n.id] = { ES: n.ES, EF: n.EF, dur: n.dur }; });
-  state.baseline = { quando: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), dur: c.dur, acts };
+  state.baseline = { quando: new Date().toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), dur: c.dur, acts };
   gravarEstado(); renderBase(c); toast('Linha de base salva.');
 }
 function ligarControle() {

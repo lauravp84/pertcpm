@@ -1,8 +1,8 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-v32';
+const CACHE = 'pertcpm-v33';
 /* As fontes do subconjunto latino entram na instalacao: sem elas o app abre
    offline com a fonte do sistema e perde a identidade. O latin-ext entra sob demanda. */
-const ARQUIVOS = ['./', './index.html', './app.js', './pratica.js', './mc.js', './recursos.js', './ccpm.js', './controle.js', './didatica.js', './extras.js', './manifest.json', './img/simbolo.webp', './img/logo-pequeno.webp', './img/favicon.png', './img/icone-192.png', './fontes/fontes.css',
+const ARQUIVOS = ['./', './index.html', './app.js', './i18n_dados.js', './i18n.js', './pratica.js', './mc.js', './recursos.js', './ccpm.js', './controle.js', './didatica.js', './extras.js', './manifest.json', './img/simbolo.webp', './img/logo-pequeno.webp', './img/logo-titulo.webp', './img/favicon.png', './img/icone-192.png', './fontes/fontes.css',
   './fontes/IBMPlexMono-400-latin.woff2',
   './fontes/IBMPlexMono-500-latin.woff2',
   './fontes/IBMPlexMono-600-latin.woff2',

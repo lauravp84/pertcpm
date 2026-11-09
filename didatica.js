@@ -123,6 +123,7 @@ const TERMOS = [
   ['nivelamento', 'Redistribuir atividades no tempo para que a carga de recursos caiba no disponível.'],
 ];
 function anotarTermos(raiz) {
+  if (typeof LANG !== 'undefined' && LANG !== 'pt') return;   /* termos e definições só existem em português */
   const re = new RegExp('(' + TERMOS.map(t => t[0].replace(/[-]/g, '\\-')).join('|') + ')', 'i');
   const def = {}; TERMOS.forEach(t => { def[t[0].toLowerCase()] = t[1]; });
   (raiz || document).querySelectorAll('p.ler, p.apoio, .gloss dd').forEach(p => {

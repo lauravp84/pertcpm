@@ -211,6 +211,9 @@ select.pr{width:96px;text-align:left}
   .topo-acoes{width:100%;flex-wrap:nowrap}
   .topo-acoes .bt-topo{padding:6px 9px;font-size:13px;min-height:36px;flex:0 0 auto}
   .topo-acoes select.bt-topo{max-width:104px;flex:1 1 auto}
+  .topo-acoes #selLang{flex:0 0 auto;max-width:58px;padding-left:6px;padding-right:2px}
+  .topo-acoes #selExemplos{min-width:0;flex:1 1 60px}
+  .topo-acoes{gap:6px}
   .so-desk{display:none}
   .resumo-in{padding:8px 12px;display:grid;grid-template-columns:auto auto 1fr;gap:6px 18px;align-items:end}
   .resumo .val{font-size:19px}
@@ -367,6 +370,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     </div>
     <span class="espaco"></span>
     <div class="topo-acoes">
+      <select class="bt-topo" id="selLang" aria-label="Idioma" title="Idioma · Language · Idioma" data-notr><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select>
       <button class="bt-topo" id="btnAgente">✦ Assistente</button>
       <select class="bt-topo" id="selExemplos" aria-label="Exemplos"><option value="">Exemplos…</option></select>
       <button class="bt-topo" id="btnSalvar">Salvar<span class="so-desk"> projeto</span></button>
@@ -918,7 +922,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </dialog>
 
 <div id="tip" role="tooltip" hidden></div>
-<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script><script src="didatica.js"></script><script src="extras.js"></script>
+<script src="i18n_dados.js"></script><script src="i18n.js"></script><script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script><script src="didatica.js"></script><script src="extras.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

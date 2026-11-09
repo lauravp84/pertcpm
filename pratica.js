@@ -21,8 +21,8 @@ let prEx = null, prResp = {}, prConferido = false, prMsg = '', prDicaCel = '', p
 function prDePronto(id) {
   const p = PR_PRONTOS.find(x => x.id === id); if (!p) return null;
   return {
-    titulo: p.titulo, modo: p.modo, unidade: p.unidade,
-    acts: p.acts.map(a => { const o = { id: a[0], nome: a[1], preds: a[3].slice() }; if (p.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; } else o.d = a[2]; return o; })
+    titulo: traduzNome(p.titulo), modo: p.modo, unidade: p.unidade,
+    acts: p.acts.map(a => { const o = { id: a[0], nome: traduzNome(a[1]), preds: a[3].slice() }; if (p.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; } else o.d = a[2]; return o; })
   };
 }
 
