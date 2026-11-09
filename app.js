@@ -1376,7 +1376,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v34';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v35';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
