@@ -36,7 +36,8 @@ function estadoVazio() {
   return {
     nome: 'Novo projeto', modo: 'cpm', inicio: '', unidade: 'd', uteis: 0,
     custoInd: '', custoDir: '', prazoAlvo: '',
-    notacao: 'disc', recModo: 'alisar', recLim: '', recRegra: 'folga',
+    notacao: 'disc', recModo: 'alisar', recLim: '', recLim2: '', recLim3: '', recRegra: 'folga', recNomes: ['', '', ''],
+    statusT: '', marcos: [], baseline: null, ccCorte: 50, ccMetodo: 'metade', ccAvanco: '', ccConsumo: '', mcDist: 'beta',
     aba: 'inicio', soCriticos: false, gFolga: true, gTarde: false, gSetas: true,
     acts: [novoAtv('A'), novoAtv('B'), novoAtv('C')]
   };
@@ -713,12 +714,14 @@ function renderPert() {
     ? '<b class="t">O que o resultado diz:</b> as estimativas das atividades críticas não variam (o = m = p), então o prazo esperado, <b>' + fmt(mu) + ' ' + uni(mu) + '</b>, é também o prazo certo.'
     : '<b class="t">O que o resultado diz:</b> em cada 100 projetos como este, cerca de <b>' + Math.round(P * 100) + '</b> terminariam em até <b>' + fmt(X) + ' ' + uni(X) + '</b>. Para ter <b>' + fmt(conf * 100) + '%</b> de segurança, prometa <b>' + fmt(Xc) + ' ' + uni(Xc) + '</b>: uma reserva de ' + fmt(Xc - mu) + ' ' + uni(Xc - mu) + ' sobre o prazo esperado (' + fmt(mu) + ').';
 
-  let h = '<thead><tr><th>Atividade</th><th class="dir">o</th><th class="dir">m</th><th class="dir">p</th><th class="dir">te</th><th class="dir">σ²</th><th>No caminho crítico</th></tr></thead><tbody>';
+  if ($('#tblPert').contains(document.activeElement)) { renderMC(); return; }
+  let h = '<thead><tr><th>Atividade</th><th class="dir">o</th><th class="dir">m</th><th class="dir">p</th><th class="dir">te</th><th class="dir">σ²</th><th>No caminho crítico</th><th class="w-num" title="Ramo probabilístico: chance de a atividade acontecer (GERT simplificado). Vale só na simulação.">Chance de ocorrer (%)</th></tr></thead><tbody>';
   c.acts.forEach(n => {
     h += '<tr class="' + (n.crit ? 'crit' : '') + '"><td class="cod"><b>' + esc(n.id) + '</b></td>' +
       '<td class="dir">' + fmt(num(n.ref.o)) + '</td><td class="dir">' + fmt(num(n.ref.m)) + '</td><td class="dir">' + fmt(num(n.ref.p)) + '</td>' +
       '<td class="dir"><b>' + fmt(n.dur) + '</b></td><td class="dir">' + fmt(n.varia) + '</td>' +
-      '<td class="txt">' + (c.critSeq.indexOf(n.id) >= 0 ? 'sim' : '—') + '</td></tr>';
+      '<td class="txt">' + (c.critSeq.indexOf(n.id) >= 0 ? 'sim' : '—') + '</td>' +
+      '<td><input data-prob="' + state.acts.indexOf(n.ref) + '" inputmode="decimal" value="' + esc(n.ref.prob) + '" placeholder="100" aria-label="Chance de ' + esc(n.id) + ' ocorrer"></td></tr>';
   });
   $('#tblPert').innerHTML = h + '</tbody>';
   renderMC();
@@ -765,10 +768,10 @@ function ligaTips() {
 }
 
 /* ---------- sequência dos passos: botões Voltar / Próximo no fim de cada aba ---------- */
-const PASSOS = [['inicio', 'Início'], ['dados', 'Dados'], ['calend', 'Calendário e custos'], ['result', 'Resultados'], ['rede', 'Diagrama de rede'], ['gantt', 'Gantt'], ['pert', 'Probabilidade'], ['crash', 'Compressão'], ['recursos', 'Recursos'], ['pratica', 'Praticar']];
-const PASSO_PROX = { result: 'Ver o diagrama de rede', rede: 'Ver o Gantt', gantt: 'Probabilidade de prazo', pert: 'Compressão de prazo', crash: 'Recursos', recursos: 'Praticar' };
+const PASSOS = [['inicio', 'Início'], ['dados', 'Dados'], ['calend', 'Calendário e custos'], ['result', 'Resultados'], ['rede', 'Diagrama de rede'], ['gantt', 'Gantt'], ['pert', 'Probabilidade'], ['crash', 'Compressão'], ['recursos', 'Recursos'], ['ccpm', 'Corrente crítica'], ['controle', 'Controle'], ['pratica', 'Praticar']];
+const PASSO_PROX = { result: 'Ver o diagrama de rede', rede: 'Ver o Gantt', gantt: 'Probabilidade de prazo', pert: 'Compressão de prazo', crash: 'Recursos', recursos: 'Corrente crítica', ccpm: 'Controle do projeto', controle: 'Praticar' };
 function montaPassos() {
-  ['result', 'rede', 'gantt', 'pert', 'crash', 'recursos', 'pratica'].forEach(p => {
+  ['result', 'rede', 'gantt', 'pert', 'crash', 'recursos', 'ccpm', 'controle', 'pratica'].forEach(p => {
     const painel = $('#p-' + p); if (!painel || painel.querySelector('.passos')) return;
     const i = PASSOS.findIndex(x => x[0] === p), ant = PASSOS[i - 1], prox = PASSOS[i + 1];
     let h = '<div class="passos noprint">';
@@ -794,7 +797,7 @@ function toastAcao(msg, rotulo, fn) {
    SIMULAÇÃO DE MONTE CARLO (aba Probabilidade, só no modo PERT)
    ============================================================ */
 let mcRes = null, mcSig = '';
-const mcAssinatura = () => JSON.stringify([state.modo, state.acts.map(a => [a.id, a.o, a.m, a.p, a.preds, a.rel])]);
+const mcAssinatura = () => JSON.stringify([state.modo, state.mcDist, state.acts.map(a => [a.id, a.o, a.m, a.p, a.preds, a.rel, a.prob])]);
 function mcPct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
 function mcHistograma(r, mu, sg, X) {
   const W = 360, H = 200, PX = 14, PB = 26, PT = 10, NB = 26;
@@ -830,6 +833,7 @@ function renderMC() {
   if (cpm) return;
   if (mcRes && mcSig !== mcAssinatura()) { mcRes = null; }
   const box = $('#mcSaida');
+  const sd = $('#mcDist'); if (sd) sd.value = state.mcDist;
   if (!mcRes) { box.innerHTML = '<p class="hint" style="margin:0">Clique em <b>Simular</b> para sortear as durações e ver a distribuição do prazo. Se mudar as estimativas, simule de novo.</p>'; return; }
   const r = mcRes, c = calcOut, mu = c.dur, sg = c.sigma;
   const X = num($('#prazoX').value), pMC = r.ate(X), pN = sg > EPS ? phi((X - mu) / sg) : (X >= mu ? 1 : 0);
@@ -839,16 +843,16 @@ function renderMC() {
     '<div class="kpi"><div class="olho">Chance de até ' + fmt(X) + '</div><div class="v navy">' + mcPct(pMC) + '</div></div>' +
     '</div>';
   h += '<div style="margin-top:12px">' + mcHistograma(r, mu, sg, X) + '</div>';
-  h += '<p class="hint">' + r.N.toLocaleString('pt-BR') + ' rodadas · semente ' + r.seed + ' · barras = simulação · tracejado = aproximação normal do PERT · linha vermelha = prazo desejado (' + fmt(X) + ')</p>';
+  h += '<p class="hint">' + r.N.toLocaleString('pt-BR') + ' rodadas · distribuição ' + (MC_DIST_NOME[r.dist] || r.dist) + ' · semente ' + r.seed + (r.temRamo ? ' · com ramos probabilísticos (atividades que podem não ocorrer)' : '') + ' · barras = simulação · tracejado = aproximação normal do PERT · linha vermelha = prazo desejado (' + fmt(X) + ')</p>';
   const dif = r.media - mu;
   h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> em ' + r.N.toLocaleString('pt-BR') + ' rodadas, <b>' + mcPct(pMC) + '</b> terminaram em até <b>' + fmt(X) + ' ' + uni(X) + '</b>; a aproximação normal do PERT dá <b>' + mcPct(pN) + '</b>.' +
     (dif > Math.max(0.01 * mu, 0.05) ? ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou acima do prazo esperado do PERT (<b>' + fmt(mu) + '</b>): com caminhos quase tão longos quanto o crítico, o projeto atrasa quando <i>qualquer</i> deles atrasa, e o PERT clássico só olha o caminho crítico esperado.' : ' O prazo médio simulado (<b>' + fmt(r.media) + '</b>) ficou próximo do esperado do PERT (<b>' + fmt(mu) + '</b>): o caminho crítico domina a rede.') + '</p>';
   h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Confiança</th><th class="dir">Simulação</th><th class="dir">Normal (PERT)</th></tr></thead><tbody>';
   [50, 75, 80, 90, 95, 99].forEach(q => { h += '<tr><td>' + q + '%</td><td class="dir"><b>' + fmt(r.pct(q / 100)) + '</b></td><td class="dir">' + (sg > EPS ? fmt(mu + zInv(q / 100) * sg) : fmt(mu)) + '</td></tr>'; });
   h += '</tbody></table></div>';
-  const ordem = r.ids.map((id, i) => [id, r.indiceCrit[i]]).sort((x, y) => y[1] - x[1]);
-  h += '<h3 style="font-size:19px;margin:18px 0 6px">Índice de criticidade</h3><p class="hint" style="margin:0 0 8px">Em quantas rodadas a atividade esteve no caminho crítico.</p><div class="rolar"><table class="tab"><thead><tr><th>Atividade</th><th class="dir">Criticidade</th><th style="width:50%"></th></tr></thead><tbody>';
-  ordem.forEach(o => { const n = c.N.get(o[0]); h += '<tr class="' + (o[1] > 0.995 ? 'crit' : '') + '"><td class="cod"><b>' + esc(o[0]) + '</b>' + (n && n.nome ? ' <span style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td><td class="dir">' + mcPct(o[1]) + '</td><td><div style="height:10px;background:var(--navy);opacity:.6;border-radius:2px;width:' + (o[1] * 100).toFixed(1) + '%"></div></td></tr>'; });
+  const ordem = r.ids.map((id, i) => [id, r.indiceCrit[i], r.ocorreu[i]]).sort((x, y) => y[1] - x[1]);
+  h += '<h3 style="font-size:19px;margin:18px 0 6px">Índice de criticidade</h3><p class="hint" style="margin:0 0 8px">Em quantas rodadas a atividade esteve no caminho crítico.</p><div class="rolar"><table class="tab"><thead><tr><th>Atividade</th><th class="dir">Criticidade</th>' + (r.temRamo ? '<th class="dir">Ocorreu</th>' : '') + '<th style="width:50%"></th></tr></thead><tbody>';
+  ordem.forEach(o => { const n = c.N.get(o[0]); h += '<tr class="' + (o[1] > 0.995 ? 'crit' : '') + '"><td class="cod"><b>' + esc(o[0]) + '</b>' + (n && n.nome ? ' <span style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td><td class="dir">' + mcPct(o[1]) + '</td>' + (r.temRamo ? '<td class="dir">' + mcPct(o[2]) + '</td>' : '') + '<td><div style="height:10px;background:var(--navy);opacity:.6;border-radius:2px;width:' + (o[1] * 100).toFixed(1) + '%"></div></td></tr>'; });
   box.innerHTML = h + '</tbody></table></div>';
 }
 function mcRodar() {
@@ -858,100 +862,10 @@ function mcRodar() {
   $('#mcSaida').innerHTML = '<p class="hint" style="margin:0">Simulando…</p>';
   setTimeout(() => {
     try {
-      mcRes = mcSimular(c, N, 1 + Math.floor(Math.random() * 2147483646)); mcSig = mcAssinatura();
+      mcRes = mcSimular(c, N, 1 + Math.floor(Math.random() * 2147483646), { dist: state.mcDist }); mcSig = mcAssinatura();
     } catch (e) { mcRes = null; alerta('Não consegui simular esta rede.'); }
     renderMC();
   }, 30);
-}
-
-/* ============================================================
-   RECURSOS: carga e nivelamento
-   ============================================================ */
-let rcRes = null, rcSig = '';
-const recMapa = () => { const m = new Map(); state.acts.forEach(a => { const id = String(a.id).trim().toUpperCase(); if (id) m.set(id, Math.max(0, num(a.rec))); }); return m; };
-const rcAssinatura = () => JSON.stringify([state.modo, state.recModo, state.recLim, state.recRegra, state.acts.map(a => [a.id, a.d, a.o, a.m, a.p, a.preds, a.rel, a.rec])]);
-function rcGrafico(seg, tmax, lim, rotulo) {
-  const W = 360, H = 170, PX = 14, PB = 24, PT = 12;
-  const pico = Math.max(rcPico(seg), lim > 0 ? lim : 0, 1e-9), fim = Math.max(tmax, 1e-9);
-  const sx = t => PX + t / fim * (W - PX * 2), sy = u => PT + (1 - u / pico) * (H - PT - PB);
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:560px;display:block" font-family="IBM Plex Mono, monospace" role="img" aria-label="' + esc(rotulo) + '">';
-  seg.forEach(g => { if (g.u > 0) s += '<rect x="' + sx(g.t0).toFixed(1) + '" y="' + sy(g.u).toFixed(1) + '" width="' + Math.max(1, sx(g.t1) - sx(g.t0) - 0.6).toFixed(1) + '" height="' + (H - PB - sy(g.u)).toFixed(1) + '" fill="' + (lim > 0 && g.u > lim + 1e-9 ? C.critico : C.navy) + '" opacity="0.6"/><text x="' + ((sx(g.t0) + sx(g.t1)) / 2).toFixed(1) + '" y="' + (sy(g.u) - 3).toFixed(1) + '" text-anchor="middle" font-size="12" fill="' + C.tinta2 + '">' + fmt(g.u) + '</text>'; });
-  s += '<line x1="' + PX + '" y1="' + (H - PB) + '" x2="' + (W - PX) + '" y2="' + (H - PB) + '" stroke="' + C.borda + '"/>';
-  if (lim > 0) s += '<line x1="' + PX + '" y1="' + sy(lim).toFixed(1) + '" x2="' + (W - PX) + '" y2="' + sy(lim).toFixed(1) + '" stroke="' + C.critico + '" stroke-width="1.5" stroke-dasharray="5 3"/>';
-  [[0, 'start'], [fim / 2, 'middle'], [fim, 'end']].forEach(t => { s += '<text x="' + (t[1] === 'start' ? PX : t[1] === 'end' ? W - PX : W / 2) + '" y="' + (H - PB + 16) + '" text-anchor="' + t[1] + '" font-size="12" fill="' + C.apagadinho + '">' + fmt(t[0]) + '</text>'; });
-  return s + '</svg>';
-}
-function rcGantt(c, S0, S1) {
-  const L = 130, W = 360, PR = 12, lh = 22, H = 20 + c.ordem.length * lh + 22, fim = Math.max(rcDuracao(c, S1), c.dur, 1e-9);
-  const sx = t => L + t / fim * (W - L - PR);
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:680px;display:block" font-family="IBM Plex Sans, sans-serif" role="img" aria-label="Cronograma nivelado">';
-  c.ordem.forEach((id, i) => {
-    const n = c.N.get(id), y = 10 + i * lh, a = S0.get(id), b = S1.get(id), mexeu = Math.abs(a - b) > 1e-9;
-    s += '<text x="' + (L - 6) + '" y="' + (y + 14) + '" text-anchor="end" font-size="12" fill="' + C.tinta + '">' + esc(id) + (n.nome ? ' ' + esc(n.nome.slice(0, 13)) : '') + '</text>';
-    if (mexeu) s += '<rect x="' + sx(a).toFixed(1) + '" y="' + (y + 3) + '" width="' + Math.max(2, sx(a + n.dur) - sx(a)).toFixed(1) + '" height="14" fill="none" stroke="' + C.apagado + '" stroke-dasharray="3 2"/>';
-    s += '<rect x="' + sx(b).toFixed(1) + '" y="' + (y + 3) + '" width="' + Math.max(2, sx(b + n.dur) - sx(b)).toFixed(1) + '" height="14" rx="2" fill="' + (mexeu ? C.folga : (n.crit ? C.critico : C.navy)) + '"/>';
-  });
-  const yb = 10 + c.ordem.length * lh;
-  s += '<line x1="' + L + '" y1="' + yb + '" x2="' + (W - PR) + '" y2="' + yb + '" stroke="' + C.borda + '"/>';
-  [[0, 'start'], [fim / 2, 'middle'], [fim, 'end']].forEach(t => { s += '<text x="' + (t[1] === 'start' ? L : t[1] === 'end' ? W - PR : (L + W - PR) / 2) + '" y="' + (yb + 15) + '" text-anchor="' + t[1] + '" font-size="12" fill="' + C.apagadinho + '">' + fmt(t[0]) + '</text>'; });
-  return s + '</svg>';
-}
-function renderRec() {
-  const t = $('#tblRec'); if (!t) return;
-  const c = calcOut;
-  $('#recModo').value = state.recModo; $('#recRegra').value = state.recRegra;
-  if (document.activeElement !== $('#recLim')) $('#recLim').value = state.recLim;
-  $('#recCampoLim').style.display = $('#recCampoRegra').style.display = state.recModo === 'limite' ? '' : 'none';
-  $('#btnRec').textContent = state.recModo === 'limite' ? 'Nivelar respeitando o limite' : 'Alisar dentro da folga';
-  if (!c || c.vazio || c.ciclo || (c.erros && c.erros.length) || !c.acts.length) {
-    t.innerHTML = ''; $('#recSaida').innerHTML = '<p class="hint">Corrija os erros da aba Dados para ver a carga de recursos.</p>'; return;
-  }
-  if (!t.contains(document.activeElement)) {
-    let h = '<thead><tr><th>Atividade</th><th class="dir">Duração</th><th class="dir"><span class="sg" data-s="ES"></span></th><th class="dir"><span class="sg" data-s="LS"></span></th><th class="dir">Folga</th><th class="w-num">Demanda por período</th></tr></thead><tbody>';
-    c.acts.forEach(n => {
-      const i = state.acts.indexOf(n.ref);
-      h += '<tr class="' + (n.crit ? 'crit' : '') + '"><td class="cod"><b>' + esc(n.id) + '</b>' + (n.nome ? ' <span style="color:var(--apagado)">' + esc(n.nome) + '</span>' : '') + '</td><td class="dir">' + fmt(n.dur) + '</td><td class="dir">' + fmt(n.ES) + '</td><td class="dir">' + fmt(n.LS) + '</td><td class="dir">' + fmt(n.FT) + '</td>' +
-        '<td><input data-rec="' + i + '" inputmode="decimal" value="' + esc(n.ref.rec) + '" placeholder="0" aria-label="Demanda de ' + esc(n.id) + '"></td></tr>';
-    });
-    t.innerHTML = h + '</tbody>'; aplicaNotacao();
-  }
-  if (rcRes && rcSig !== rcAssinatura()) rcRes = null;
-  const rec = recMapa(), S0 = rcInicioCedo(c), seg0 = rcPerfil(rcItens(c, rec, S0));
-  const limite = num(state.recLim), temDemanda = rcTotal(seg0) > 0;
-  if (!temDemanda) { $('#recSaida').innerHTML = '<p class="hint" style="margin:0">Preencha a coluna <b>Demanda por período</b> para ver a carga. Para testar, carregue o exemplo “Recursos (nivelamento)” em Exemplos.</p>'; return; }
-  let h = '<div class="kpis"><div class="kpi"><div class="olho">Pico de carga</div><div class="v">' + fmt(rcPico(seg0)) + '</div></div><div class="kpi"><div class="olho">Total de unidades × período</div><div class="v">' + fmt(rcTotal(seg0)) + '</div></div><div class="kpi"><div class="olho">Média por período</div><div class="v">' + fmt(rcTotal(seg0) / Math.max(c.dur, 1e-9)) + '</div></div></div>';
-  h += '<h3 style="font-size:19px;margin:16px 0 6px">Carga com todas as atividades o mais cedo possível</h3>' + rcGrafico(seg0, c.dur, state.recModo === 'limite' && limite > 0 ? limite : 0, 'Carga de recursos no cronograma mais cedo');
-  if (state.recModo === 'limite' && limite > 0) h += '<p class="hint">Linha tracejada = limite (' + fmt(limite) + '). Barras vermelhas passam do limite.</p>';
-  if (rcRes) {
-    const r = rcRes, seg1 = rcPerfil(rcItens(c, rec, r.S)), dur1 = rcDuracao(c, r.S);
-    h += '<div class="sec" style="margin-top:22px"><h3>Depois do nivelamento</h3></div>';
-    h += '<div class="kpis"><div class="kpi"><div class="olho">Pico de carga</div><div class="v navy">' + fmt(rcPico(seg1)) + '</div></div><div class="kpi"><div class="olho">Prazo do projeto</div><div class="v ' + (dur1 > c.dur + 1e-9 ? 'crit' : '') + '">' + fmt(dur1) + ' ' + uni(dur1) + '</div></div><div class="kpi"><div class="olho">Variação do prazo</div><div class="v">' + (dur1 - c.dur > 1e-9 ? '+' : '') + fmt(dur1 - c.dur) + '</div></div></div>';
-    h += rcGrafico(seg1, Math.max(dur1, c.dur), state.recModo === 'limite' && limite > 0 ? limite : 0, 'Carga de recursos depois do nivelamento');
-    const mexidas = c.ordem.filter(id => Math.abs(r.S.get(id) - S0.get(id)) > 1e-9);
-    const frase = state.recModo === 'limite'
-      ? (dur1 > c.dur + 1e-9 ? 'Para caber no limite de <b>' + fmt(limite) + '</b>, o projeto passou de <b>' + fmt(c.dur) + '</b> para <b>' + fmt(dur1) + ' ' + uni(dur1) + '</b>: esse é o preço do limite de recursos. ' : 'O limite de <b>' + fmt(limite) + '</b> coube sem atrasar o projeto (<b>' + fmt(c.dur) + ' ' + uni(c.dur) + '</b>). ')
-      : (rcPico(seg1) < rcPico(seg0) - 1e-9 ? 'Deslocar atividades dentro da folga baixou o pico de <b>' + fmt(rcPico(seg0)) + '</b> para <b>' + fmt(rcPico(seg1)) + '</b> sem mexer no prazo (<b>' + fmt(c.dur) + ' ' + uni(c.dur) + '</b>). ' : 'Não há folga suficiente para reduzir o pico sem atrasar o projeto; a carga já é a mais uniforme possível dentro das folgas. ');
-    h += '<p class="ler interp"><b class="t">O que o resultado diz:</b> ' + frase + (mexidas.length ? 'Atividades deslocadas: <b>' + mexidas.map(esc).join(', ') + '</b>.' : 'Nenhuma atividade precisou mudar de lugar.') + '</p>';
-    h += '<h3 style="font-size:19px;margin:16px 0 6px">Cronograma nivelado</h3><p class="hint" style="margin:0 0 8px">Barra cheia = início depois do nivelamento; contorno tracejado = início mais cedo original; verde = atividade deslocada.</p>' + rcGantt(c, S0, r.S);
-    h += '<div class="rolar" style="margin-top:12px"><table class="tab"><thead><tr><th>Atividade</th><th class="dir">Início original</th><th class="dir">Início nivelado</th><th class="dir">Deslocamento</th></tr></thead><tbody>';
-    c.ordem.forEach(id => { const d = r.S.get(id) - S0.get(id); h += '<tr class="' + (Math.abs(d) > 1e-9 ? 'crit' : '') + '"><td class="cod"><b>' + esc(id) + '</b></td><td class="dir">' + fmt(S0.get(id)) + '</td><td class="dir"><b>' + fmt(r.S.get(id)) + '</b></td><td class="dir">' + (Math.abs(d) > 1e-9 ? '+' + fmt(d) : '—') + '</td></tr>'; });
-    h += '</tbody></table></div>';
-  }
-  $('#recSaida').innerHTML = h;
-}
-function recRodar() {
-  const c = calcOut;
-  if (!c || c.erros.length || !c.acts.length) { alerta('Corrija os erros dos dados antes de nivelar.'); return; }
-  const rec = recMapa();
-  if (!Array.from(rec.values()).some(v => v > 0)) { alerta('Informe a demanda de recurso de pelo menos uma atividade.'); return; }
-  let r;
-  if (state.recModo === 'limite') {
-    const L = num(state.recLim);
-    if (!(L > 0)) { alerta('Informe o limite de recursos por período (um número maior que zero).'); return; }
-    r = rcLimitar(c, rec, L, state.recRegra);
-    if (r.erro) { alerta('A atividade ' + r.erro + ' precisa de ' + fmt(rec.get(r.erro)) + ' unidades por período, mais que o limite de ' + fmt(L) + '. Aumente o limite ou reduza a demanda dela.'); return; }
-  } else r = rcAlisar(c, rec);
-  rcRes = r; rcSig = rcAssinatura(); renderRec();
 }
 
 function desenhaNormal(mu, sg, X) {
@@ -1097,12 +1011,13 @@ function rodarCrash() {
     '<div class="c"><div class="olho">Custo total mínimo</div><div class="v">' + money(passos[iOt].tot) + '</div></div>' +
     '<div class="c"><div class="olho">Economia vs. normal</div><div class="v folga">' + money(economia) + '</div></div>';
 
-  let h = '<thead><tr><th class="dir">Passo</th><th>Comprimir</th><th class="dir">Prazo</th><th class="dir">+ Custo</th><th class="dir">Custo direto</th><th class="dir">Custo indireto</th><th class="dir">Custo total</th></tr></thead><tbody>';
+  let h = '<thead><tr><th class="dir">Passo</th><th>Comprimir</th><th class="dir">Prazo</th><th class="dir">+ Custo</th><th class="dir" title="Custo de encurtar 1 período neste passo: a inclinação da curva tempo-custo">Custo marginal / período</th><th class="dir">Custo direto</th><th class="dir">Custo indireto</th><th class="dir">Custo total</th></tr></thead><tbody>';
   passos.forEach((p, i) => {
     const ot = temCusto && i === iOt;
     h += '<tr' + (ot ? ' style="background:#E8F0F2"' : '') + '><td class="dir">' + i + '</td>' +
       '<td' + (i ? ' style="color:var(--critico);font-weight:600"' : ' class="txt"') + '>' + esc(p.quem) + '</td>' +
       '<td class="dir"><b>' + fmt(p.dur) + '</b></td><td class="dir">' + (p.add ? money(p.add) : '—') + '</td>' +
+      '<td class="dir">' + (i && passos[i - 1].dur - p.dur > EPS ? money(p.add / (passos[i - 1].dur - p.dur)) : '—') + '</td>' +
       '<td class="dir">' + money(p.dir) + '</td><td class="dir">' + money(p.ind) + '</td><td class="dir"><b>' + money(p.tot) + '</b></td></tr>';
   });
   $('#tblCrashOut').innerHTML = h + '</tbody>';
@@ -1331,7 +1246,7 @@ const EXEMPLOS = [
   },
   {
     nome: 'Recursos (nivelamento)', modo: 'cpm', unidade: 'd', recLim: 5,
-    rec: [2, 3, 2, 3, 2, 3, 1],
+    rec: [2, 3, 2, 3, 2, 3, 1], rec2: [1, 0, 1, 0, 1, 1, 0], recNomes: ['equipe', 'guindaste', ''],
     acts: [['A', 'Preparação', 3, []], ['B', 'Módulo 1', 3, ['A']], ['C', 'Módulo 2', 5, ['A']], ['D', 'Módulo 3', 2, ['A']],
     ['E', 'Integração 1', 4, ['B']], ['F', 'Integração 2', 3, ['C', 'D']], ['G', 'Entrega', 2, ['E', 'F']]]
   },
@@ -1370,12 +1285,14 @@ function carregarExemplo(i) {
   st.nome = ex.nome; st.modo = ex.modo; st.unidade = ex.unidade || 'd';
   st.custoDir = ex.custoDir || ''; st.custoInd = ex.custoInd || '';
   if (ex.recLim) { st.recLim = ex.recLim; st.recModo = 'limite'; }
+  if (ex.recNomes) st.recNomes = ex.recNomes.slice();
   st.acts = ex.acts.map(a => {
     const o = novoAtv(a[0], a[1]);
     if (ex.modo === 'pert') { o.o = a[2][0]; o.m = a[2][1]; o.p = a[2][2]; o.d = a[2][1]; }
     else { o.d = a[2]; o.o = a[2]; o.m = a[2]; o.p = a[2]; }
     const pr = leiaPredsRel(a[3].join(', '), null); o.preds = pr.preds; o.rel = pr.rel;
     if (ex.rec) o.rec = ex.rec[ex.acts.indexOf(a)];
+    if (ex.rec2) o.rec2 = ex.rec2[ex.acts.indexOf(a)];
     if (a.length > 4) { o.dmin = a[4]; o.cc = a[5]; }
     return o;
   });
@@ -1431,7 +1348,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v27';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v28';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
@@ -1662,6 +1579,8 @@ function irPara(p) {
   const pn = $('#p-' + p); if (pn && document.activeElement && document.activeElement.closest && !document.activeElement.closest('#p-' + p)) { try { pn.focus({ preventScroll: true }); } catch (e) { } }   /* leitor de tela e teclado seguem para o conteúdo */
   if (p === 'crash') renderCrashTabela();
   if (p === 'recursos') renderRec();
+  if (p === 'ccpm') renderCCPM();
+  if (p === 'controle') renderControle();
   if (p === 'pratica' && typeof renderPratica === 'function') renderPratica();
   gravarEstado();
 }
@@ -1678,10 +1597,11 @@ function recalcular() {
   if (calcOut.ciclo || !calcOut.acts.length) {
     ['#stageRede', '#stageGantt'].forEach(s => { $(s).innerHTML = '<p class="hint" style="padding:24px">Sem rede válida para desenhar.</p>'; });
     $('#tblResult').innerHTML = ''; $('#listaCaminhos').innerHTML = '';
+    renderRec(); renderCCPM(); renderControle();
     gravarEstado();
     return;
   }
-  renderResultados(); renderRede(); renderGantt(); renderPert(); renderRec();
+  renderResultados(); renderRede(); renderGantt(); renderPert(); renderRec(); renderCCPM(); renderControle();
   gravarEstado();
 }
 
@@ -1714,9 +1634,20 @@ function normalizaEstado(novo) {
   st.nome = String(st.nome == null ? '' : st.nome).slice(0, 120) || 'Novo projeto';
   st.inicio = /^\d{4}-\d{2}-\d{2}$/.test(String(st.inicio)) ? String(st.inicio) : '';
   ['custoInd', 'custoDir', 'prazoAlvo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
-  st.aba = ['inicio', 'dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'recursos', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
+  st.aba = ['inicio', 'dados', 'result', 'rede', 'gantt', 'pert', 'calend', 'crash', 'recursos', 'ccpm', 'controle', 'pratica', 'guia', 'contato'].indexOf(st.aba) >= 0 ? st.aba : 'dados';
   st.notacao = st.notacao === 'intl' ? 'intl' : 'disc';
   st.recModo = st.recModo === 'limite' ? 'limite' : 'alisar';
+  ['recLim2', 'recLim3', 'statusT', 'ccAvanco', 'ccConsumo'].forEach(k => { st[k] = (typeof st[k] === 'number' || typeof st[k] === 'string') ? st[k] : ''; });
+  st.ccCorte = (typeof st.ccCorte === 'number' || typeof st.ccCorte === 'string') && String(st.ccCorte).trim() !== '' ? st.ccCorte : 50;
+  st.ccMetodo = st.ccMetodo === 'rss' ? 'rss' : 'metade';
+  st.mcDist = ['beta', 'tri', 'uni', 'normal'].indexOf(st.mcDist) >= 0 ? st.mcDist : 'beta';
+  st.recNomes = (Array.isArray(st.recNomes) ? st.recNomes : []).slice(0, 3).map(x => String(x == null ? '' : x).slice(0, 24)); while (st.recNomes.length < 3) st.recNomes.push('');
+  st.marcos = (Array.isArray(st.marcos) ? st.marcos : []).slice(0, 30).filter(m => m && typeof m === 'object').map(m => ({ nome: String(m.nome == null ? '' : m.nome).slice(0, 60), ref: String(m.ref == null ? '__fim' : m.ref).trim().toUpperCase().slice(0, 6) || '__fim', alvo: (typeof m.alvo === 'number' || typeof m.alvo === 'string') ? m.alvo : '' }));
+  st.marcos.forEach(m => { if (m.ref === '__FIM') m.ref = '__fim'; });
+  if (st.baseline && typeof st.baseline === 'object' && st.baseline.acts && typeof st.baseline.acts === 'object') {
+    const acts = {}; Object.keys(st.baseline.acts).slice(0, MAX_ATIV).forEach(id => { const b = st.baseline.acts[id]; if (b && isFinite(+b.ES) && isFinite(+b.EF)) acts[String(id).slice(0, 6)] = { ES: +b.ES, EF: +b.EF, dur: isFinite(+b.dur) ? +b.dur : +b.EF - +b.ES }; });
+    st.baseline = { quando: String(st.baseline.quando == null ? '' : st.baseline.quando).slice(0, 40), dur: isFinite(+st.baseline.dur) ? +st.baseline.dur : 0, acts };
+  } else st.baseline = null;
   st.recRegra = ['folga', 'maior', 'recurso'].indexOf(st.recRegra) >= 0 ? st.recRegra : 'folga';
   st.recLim = (typeof st.recLim === 'number' || typeof st.recLim === 'string') ? st.recLim : '';
   st.acts = (Array.isArray(st.acts) ? st.acts : []).slice(0, MAX_ATIV).filter(a => a && typeof a === 'object' && !Array.isArray(a)).map(a => {
@@ -1726,7 +1657,7 @@ function normalizaEstado(novo) {
     x.preds = (Array.isArray(x.preds) ? x.preds : String(x.preds == null ? '' : x.preds).split(/[,;\s]+/))
       .map(p => String(p).trim().toUpperCase()).filter(Boolean);
     const r0 = (x.rel && typeof x.rel === 'object' && !Array.isArray(x.rel)) ? x.rel : {};
-    x.rec = (typeof x.rec === 'number' || typeof x.rec === 'string') ? x.rec : '';
+    ['rec', 'rec2', 'rec3', 'custo', 'real', 'gasto', 'prob'].forEach(k => { x[k] = (typeof x[k] === 'number' || typeof x[k] === 'string') ? x[k] : ''; });
     x.rel = {};
     x.preds.forEach(p => {
       if (!Object.prototype.hasOwnProperty.call(r0, p)) return;
@@ -1874,6 +1805,8 @@ function ligar() {
 
   $('#btnContato').onclick = dlgContato;
   $('#btnMC').onclick = mcRodar;
+  $('#mcDist').onchange = e => { state.mcDist = e.target.value; mcRes = null; renderMC(); gravarEstado(); };
+  $('#tblPert').addEventListener('input', e => { const i = e.target.getAttribute('data-prob'); if (i === null || !state.acts[+i]) return; state.acts[+i].prob = e.target.value; mcRes = null; renderMC(); gravarEstado(); });
   montaPassos(); ligaTips();
   const vs = $('#versao'); if (vs) vs.textContent = VERSAO;
   /* seta à direita do menu enquanto houver abas escondidas */
@@ -1883,11 +1816,7 @@ function ligar() {
   $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.3, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
   $('#btnZmAjustar').onclick = () => { const w = $('#stageRede').clientWidth - 2; if (redeLarg > 0 && w > 0) { zoomRede = Math.max(0.3, Math.min(2.4, +(w / redeLarg).toFixed(2))); renderRede(); } };
   $('#btnZmMais').onclick = () => { zoomRede = Math.min(2.4, +(zoomRede + 0.2).toFixed(2)); renderRede(); };
-  $('#btnRec').onclick = recRodar;
-  $('#recModo').onchange = e => { state.recModo = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
-  $('#recRegra').onchange = e => { state.recRegra = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
-  $('#recLim').oninput = e => { state.recLim = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
-  $('#tblRec').addEventListener('input', e => { const i = e.target.getAttribute('data-rec'); if (i === null || !state.acts[+i]) return; state.acts[+i].rec = e.target.value; renderRec(); gravarEstado(); });
+  ligarRecursos(); ligarControle(); ligarCCPM();
   $('#btnExemploMini').onclick = carregarExemploMini;
   $('#btnHeroEx').onclick = () => { carregarExemploMini(); irPara('result'); scrollTo(0, 0); };
   /* lembra se a pessoa fechou o passo a passo */

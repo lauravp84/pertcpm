@@ -198,6 +198,9 @@ select.pr{width:96px;text-align:left}
 .so-desk{display:inline}
 .topo-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media (max-width:1400px){.aba .so-desk{display:none}}
+.topo-acoes .so-nav{display:none}
+@media (min-width:900px){.topo-acoes .so-nav{display:inline-block}.aba[data-p="guia"],.aba[data-p="contato"]{display:none}}
+@media (max-width:1500px){.aba{padding:12px 8px}}
 @media (max-width:640px){
   .topo-in{padding:8px 12px;gap:8px}
   .marca .selo{width:28px;height:28px;font-size:12px}
@@ -298,6 +301,8 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <select class="bt-topo" id="selExemplos" aria-label="Exemplos"><option value="">Exemplos…</option></select>
       <button class="bt-topo" id="btnSalvar">Salvar<span class="so-desk"> projeto</span></button>
       <button class="bt-topo" id="btnProjetos">Abrir</button>
+      <button class="bt-topo so-nav" data-ir="guia">Guia</button>
+      <button class="bt-topo so-nav" data-ir="contato">Contato</button>
     </div>
   </div>
 </header>
@@ -322,7 +327,9 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <button class="aba" data-p="pert" role="tab" aria-selected="false" aria-controls="p-pert"><span class="n">6</span>Probabilidade</button>
     <button class="aba" data-p="crash" role="tab" aria-selected="false" aria-controls="p-crash"><span class="n">7</span>Compressão</button>
     <button class="aba" data-p="recursos" role="tab" aria-selected="false" aria-controls="p-recursos"><span class="n">8</span>Recursos</button>
-    <button class="aba" data-p="pratica" role="tab" aria-selected="false" aria-controls="p-pratica"><span class="n">9</span>Praticar</button>
+    <button class="aba" data-p="ccpm" role="tab" aria-selected="false" aria-controls="p-ccpm"><span class="n">9</span>Corrente crítica</button>
+    <button class="aba" data-p="controle" role="tab" aria-selected="false" aria-controls="p-controle"><span class="n">10</span>Controle</button>
+    <button class="aba" data-p="pratica" role="tab" aria-selected="false" aria-controls="p-pratica"><span class="n">11</span>Praticar</button>
     <button class="aba" data-p="guia" role="tab" aria-selected="false" aria-controls="p-guia"><span class="n">?</span>Guia</button>
     <button class="aba" data-p="contato" role="tab" aria-selected="false" aria-controls="p-contato"><span class="n">@</span>Contato</button>
   </div>
@@ -342,7 +349,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
         <button class="bt primario" data-ir="dados" data-foco="#tblDados input.cod" style="padding:13px 22px">Começar →</button>
         <button class="bt" id="btnHeroEx" style="padding:13px 22px">Ver um exemplo pronto</button>
       </div>
-      <ul class="chips" aria-label="Recursos da calculadora"><li>CPM</li><li>PERT</li><li>Relações PDM</li><li>Gantt</li><li>Monte Carlo</li><li>Recursos</li></ul>
+      <ul class="chips" aria-label="Recursos da calculadora"><li>CPM</li><li>PERT</li><li>Relações PDM</li><li>Gantt</li><li>Monte Carlo</li><li>Recursos</li><li>Corrente crítica</li><li>Valor agregado</li></ul>
     </div>
     <div aria-hidden="false"><svg viewBox="0 0 440 250" role="img" aria-label="Exemplo de rede de atividades com o caminho crítico em vermelho" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
       <defs>
@@ -412,7 +419,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
   <div class="card" style="margin-top:18px"><div class="card-corpo">
     <h3 style="font-size:21px;margin-bottom:6px">Os passos da calculadora</h3>
     <p class="hint" style="margin:0 0 6px">Siga a ordem das abas, da esquerda para a direita. Só o passo 1 é obrigatório: os outros mostram o que o cálculo descobriu.</p>
-    <div class="passos-grade"><button class="passo-card" data-ir="dados" data-foco="#tblDados input.cod"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 18h24M12 6v20"/></svg><span class="num">PASSO 1</span><b>Dados</b><span class="d">Escolha CPM ou PERT e preencha a tabela de atividades.</span></button><button class="passo-card opc" data-ir="calend"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="24" height="21" rx="2"/><path d="M4 14h24M10 4v6M22 4v6"/><circle cx="12" cy="21" r="1.5"/><circle cx="20" cy="21" r="1.5"/></svg><span class="num">PASSO 2</span><b>Calendário e custos</b><span class="d">Data de início, unidade de tempo, custos e notação.</span></button><button class="passo-card" data-ir="result"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M9 12h8M9 17h8M9 22h8" /><path d="M21 17l2 2 4-4"/></svg><span class="num">PASSO 3</span><b>Resultados</b><span class="d">Datas mais cedo e mais tarde, folgas e caminho crítico.</span></button><button class="passo-card" data-ir="rede"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="7" height="8" rx="1"/><rect x="13" y="4" width="7" height="8" rx="1"/><rect x="13" y="20" width="7" height="8" rx="1"/><rect x="23" y="12" width="7" height="8" rx="1"/><path d="M10 15l3-7M10 17l3 7M20 8l3 6M20 24l3-6"/></svg><span class="num">PASSO 4</span><b>Diagrama de rede</b><span class="d">O projeto em caixas e setas, com o cálculo passo a passo.</span></button><button class="passo-card" data-ir="gantt"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M10 16h14M18 24h10"/><path d="M4 4v24" stroke-width="1.5"/></svg><span class="num">PASSO 5</span><b>Gantt</b><span class="d">As atividades no tempo, com a folga de cada uma.</span></button><button class="passo-card" data-ir="pert"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 26C10 26 11 6 16 6s6 20 13 20"/><path d="M3 26h26" stroke-width="1.5"/></svg><span class="num">PASSO 6</span><b>Probabilidade</b><span class="d">No modo PERT: chance de cumprir um prazo e simulação.</span></button><button class="passo-card opc" data-ir="crash"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h9M9 11l5 5-5 5M29 16h-9M23 11l-5 5 5 5"/></svg><span class="num">PASSO 7</span><b>Compressão</b><span class="d">Quanto custa encurtar o projeto e o prazo mais barato.</span></button><button class="passo-card opc" data-ir="recursos"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 27V17M12 27V8M19 27V13M26 27V20M3 27h26"/></svg><span class="num">PASSO 8</span><b>Recursos</b><span class="d">Carga de pessoas ou máquinas e como nivelar.</span></button><button class="passo-card" data-ir="pratica"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M10 16l4 4 8-9"/></svg><span class="num">PASSO 9</span><b>Praticar</b><span class="d">Exercícios para calcular à mão, com correção e gabarito.</span></button></div>
+    <div class="passos-grade"><button class="passo-card" data-ir="dados" data-foco="#tblDados input.cod"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 18h24M12 6v20"/></svg><span class="num">PASSO 1</span><b>Dados</b><span class="d">Escolha CPM ou PERT e preencha a tabela de atividades.</span></button><button class="passo-card opc" data-ir="calend"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="24" height="21" rx="2"/><path d="M4 14h24M10 4v6M22 4v6"/><circle cx="12" cy="21" r="1.5"/><circle cx="20" cy="21" r="1.5"/></svg><span class="num">PASSO 2</span><b>Calendário e custos</b><span class="d">Data de início, unidade de tempo, custos e notação.</span></button><button class="passo-card" data-ir="result"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M9 12h8M9 17h8M9 22h8" /><path d="M21 17l2 2 4-4"/></svg><span class="num">PASSO 3</span><b>Resultados</b><span class="d">Datas mais cedo e mais tarde, folgas e caminho crítico.</span></button><button class="passo-card" data-ir="rede"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="7" height="8" rx="1"/><rect x="13" y="4" width="7" height="8" rx="1"/><rect x="13" y="20" width="7" height="8" rx="1"/><rect x="23" y="12" width="7" height="8" rx="1"/><path d="M10 15l3-7M10 17l3 7M20 8l3 6M20 24l3-6"/></svg><span class="num">PASSO 4</span><b>Diagrama de rede</b><span class="d">O projeto em caixas e setas, com o cálculo passo a passo.</span></button><button class="passo-card" data-ir="gantt"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M10 16h14M18 24h10"/><path d="M4 4v24" stroke-width="1.5"/></svg><span class="num">PASSO 5</span><b>Gantt</b><span class="d">As atividades no tempo, com a folga de cada uma.</span></button><button class="passo-card" data-ir="pert"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 26C10 26 11 6 16 6s6 20 13 20"/><path d="M3 26h26" stroke-width="1.5"/></svg><span class="num">PASSO 6</span><b>Probabilidade</b><span class="d">No modo PERT: chance de cumprir um prazo e simulação.</span></button><button class="passo-card opc" data-ir="crash"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h9M9 11l5 5-5 5M29 16h-9M23 11l-5 5 5 5"/></svg><span class="num">PASSO 7</span><b>Compressão</b><span class="d">Quanto custa encurtar o projeto e o prazo mais barato.</span></button><button class="passo-card opc" data-ir="recursos"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 27V17M12 27V8M19 27V13M26 27V20M3 27h26"/></svg><span class="num">PASSO 8</span><b>Recursos</b><span class="d">Carga de pessoas ou máquinas e como nivelar.</span></button><button class="passo-card opc" data-ir="ccpm"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="12" width="8" height="8" rx="1"/><rect x="13" y="12" width="8" height="8" rx="1"/><rect x="23" y="12" width="6" height="8" rx="1" stroke-dasharray="3 2"/><path d="M11 16h2M21 16h2"/></svg><span class="num">PASSO 9</span><b>Corrente crítica</b><span class="d">Durações agressivas, pulmões e gráfico de febre.</span></button><button class="passo-card opc" data-ir="controle"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 26C12 26 14 8 28 6"/><path d="M4 28h24M4 4v24" stroke-width="1.5"/><circle cx="16" cy="19" r="2"/></svg><span class="num">PASSO 10</span><b>Controle</b><span class="d">Curva S, valor agregado, marcos e linha de base.</span></button><button class="passo-card" data-ir="pratica"><svg class="ic" viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="#1A3A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M10 16l4 4 8-9"/></svg><span class="num">PASSO 11</span><b>Praticar</b><span class="d">Exercícios para calcular à mão, com correção e gabarito.</span></button></div>
   </div></div>
   <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
     <button class="bt primario" data-ir="dados" style="padding:13px 22px">Começar: preencher as atividades →</button>
@@ -604,6 +611,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
         <div class="campo" style="max-width:200px"><label for="mcN">Rodadas</label>
           <select id="mcN"><option value="1000">1.000</option><option value="5000">5.000</option><option value="10000" selected>10.000</option><option value="50000">50.000</option></select></div>
+        <div class="campo" style="max-width:260px"><label for="mcDist">Distribuição de cada atividade</label><select id="mcDist"><option value="beta">Beta-PERT (padrão)</option><option value="tri">Triangular (o, m, p)</option><option value="uni">Uniforme entre o e p</option><option value="normal">Normal truncada (te, σ)</option></select></div>
         <button class="bt primario" id="btnMC" style="padding:11px 20px">Simular</button>
       </div>
       <div id="mcSaida" style="margin-top:16px"></div>
@@ -649,19 +657,58 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 <section class="painel" id="p-recursos" role="tabpanel" tabindex="-1">
   <div class="sec">
     <h2>Recursos <span class="olho">opcional</span></h2>
-    <p class="apoio">Informe quantas unidades de um recurso (pessoas, máquinas, horas) cada atividade usa <b>por período</b>. A calculadora mostra a carga ao longo do projeto e nivela quando há excesso.</p>
+    <p class="apoio">Informe quantas unidades de cada recurso (pessoas, máquinas, horas; até três tipos) cada atividade usa <b>por período</b>. A calculadora mostra a carga ao longo do projeto e nivela quando há excesso.</p>
   </div>
   <p class="ler"><b class="t">Como ler:</b> o gráfico de barras é a <b>carga</b>: quantas unidades do recurso estão em uso em cada período, se todas as atividades começarem o mais cedo possível. Picos altos seguidos de vales são ruins: pedem equipe grande por pouco tempo. Há dois remédios. <b>Alisar dentro da folga</b> desloca só atividades que têm folga, então o prazo não muda e o pico cai. <b>Respeitar um limite</b> adia atividades até a carga caber no limite; aqui o prazo pode crescer, e a diferença é o preço do limite.</p>
   <div class="card"><div class="rolar"><table class="tab" id="tblRec"></table></div></div>
   <div class="card" style="margin-top:14px"><div class="card-corpo">
+    <div class="grade" id="recTipos" style="margin-bottom:12px"></div>
     <div class="grade">
       <div class="campo"><label for="recModo">O que fazer</label><select id="recModo"><option value="alisar">Alisar dentro da folga (prazo não muda)</option><option value="limite">Respeitar um limite de recursos (prazo pode crescer)</option></select></div>
-      <div class="campo" id="recCampoLim"><label for="recLim">Limite de recursos por período</label><input type="number" id="recLim" min="0" step="any" placeholder="ex.: 5"></div>
+      <div id="recCampoLim" style="grid-column:1/-1"><div class="grade" id="recLimites"></div></div>
       <div class="campo" id="recCampoRegra"><label for="recRegra">Quem passa na frente</label><select id="recRegra"><option value="folga">Menor folga primeiro (padrão)</option><option value="maior">Maior duração primeiro</option><option value="recurso">Maior demanda primeiro</option></select></div>
     </div>
     <div style="margin-top:14px"><button class="bt primario" id="btnRec" style="padding:11px 20px">Nivelar</button></div>
   </div></div>
   <div id="recSaida" style="margin-top:18px"></div>
+</section>
+
+<!-- ============ CORRENTE CRÍTICA ============ -->
+<section class="painel" id="p-ccpm" role="tabpanel" tabindex="-1">
+  <div class="sec">
+    <h2>Corrente crítica (CCPM)</h2>
+    <p class="apoio">Método de Goldratt: tira a margem de segurança escondida em cada atividade e a concentra em pulmões, protegendo o projeto inteiro em vez de cada tarefa.</p>
+  </div>
+  <p class="ler"><b class="t">Como ler:</b> cada pessoa estima com folga (“para garantir”). Somadas, essas folgas inflam o prazo e ainda assim são gastas (síndrome do estudante, lei de Parkinson). A corrente crítica usa durações <b>agressivas</b> (sem a margem), recalcula o caminho crítico e coloca um <b>pulmão de projeto</b> no fim, com parte da margem retirada. Onde uma cadeia lateral entra na corrente, um <b>pulmão de convergência</b> protege a junção. Durante a execução, acompanha-se só o consumo do pulmão, no <b>gráfico de febre</b>.</p>
+  <div class="card"><div class="card-corpo">
+    <div class="grade">
+      <div class="campo" id="ccCampoCorte"><label for="ccCorte">Margem a retirar de cada atividade (%)</label><input type="number" id="ccCorte" min="0" max="90" step="any" placeholder="50"></div>
+      <div class="campo"><label for="ccMetodo">Tamanho dos pulmões</label><select id="ccMetodo"><option value="metade">Metade da margem retirada (regra dos 50%)</option><option value="rss">Raiz da soma dos quadrados (RSS)</option></select></div>
+      <div class="campo"><label for="ccAvanco">Execução: corrente concluída (%)</label><input type="number" id="ccAvanco" min="0" max="100" step="any" placeholder="em branco = planejamento"></div>
+      <div class="campo"><label for="ccConsumo">Execução: pulmão consumido (%)</label><input type="number" id="ccConsumo" min="0" max="100" step="any" placeholder="0"></div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">No modo PERT a margem é a diferença entre o pessimista (p) e o mais provável (m); o campo de corte não se aplica.</p>
+  </div></div>
+  <div id="ccSaida" style="margin-top:18px"></div>
+</section>
+
+<!-- ============ CONTROLE ============ -->
+<section class="painel" id="p-controle" role="tabpanel" tabindex="-1">
+  <div class="sec">
+    <h2>Controle do projeto</h2>
+    <p class="apoio">Curva S, valor agregado (EVM), marcos e linha de base: o plano vira régua para medir a execução.</p>
+  </div>
+  <p class="ler"><b class="t">Como ler:</b> a <b>curva S</b> acumula o custo planejado período a período. Numa data de status, compara-se três números: <b>PV</b> (o que deveria estar feito), <b>EV</b> (o que foi feito, medido em custo planejado) e <b>AC</b> (o que foi gasto). EV abaixo de PV é atraso; AC acima de EV é estouro. Os índices SPI e CPI projetam o prazo e o custo finais.</p>
+  <div class="card"><div class="card-corpo">
+    <div class="grade" style="align-items:end">
+      <div class="campo" style="max-width:260px"><label for="statusT">Período de status (hoje)</label><input type="number" id="statusT" min="0" step="any" placeholder="em branco = só o plano"></div>
+      <p class="hint" style="margin:0;grid-column:span 2">Preencha na tabela o <b>custo planejado</b> de cada atividade (ou deixe em branco para ratear o custo direto normal) e, para acompanhar, o <b>% concluído</b> e o <b>gasto real</b> até a data de status.</p>
+    </div>
+  </div></div>
+  <div class="card" style="margin-top:14px"><div class="rolar"><table class="tab" id="tblCtrl"></table></div></div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo"><h3 style="font-size:21px;margin-bottom:8px">Curva S e valor agregado</h3><div id="ctrlSaida"></div></div></div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo"><h3 style="font-size:21px;margin-bottom:8px">Marcos</h3><div id="ctrlMarcos"></div></div></div>
+  <div class="card" style="margin-top:18px"><div class="card-corpo"><h3 style="font-size:21px;margin-bottom:8px">Linha de base</h3><div id="ctrlBase"></div></div></div>
 </section>
 
 <section class="painel" id="p-pratica" role="tabpanel" tabindex="-1">
@@ -732,9 +779,13 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
     <dl class="gloss">
       <dt>CPM (<i>Critical Path Method</i>)</dt><dd>Criado entre 1957 e 1959 por Kelley e Walker, na DuPont, para obras e manutenção industrial. Parte de atividades conhecidas, com duração e custo bem estimados: uma duração só por atividade. Permite analisar a troca entre custo e prazo (compressão).</dd>
       <dt>PERT (<i>Program Evaluation and Review Technique</i>)</dt><dd>Criado em 1958 pela Marinha dos EUA, no projeto do míssil Polaris, para atividades inéditas e incertas. Pede três estimativas (otimista, mais provável e pessimista). A duração esperada é te = (o + 4m + p) / 6 e o desvio é σ = (p − o) / 6; somando os desvios do caminho crítico, estima-se a chance de cumprir um prazo.</dd>
-      <dt>Simulação de Monte Carlo</dt><dd>Método dos anos 1940, que usa sorteios repetidos para estimar o que uma conta direta não alcança. Aqui, sorteia a duração de cada atividade milhares de vezes e mede o prazo do projeto em cada rodada. Corrige o que o PERT clássico ignora: quando há caminhos paralelos, o prazo é o maior entre eles, e por isso a média simulada costuma ficar acima do prazo esperado. Está na aba Probabilidade.</dd>
-      <dt>Carga e nivelamento de recursos</dt><dd>O CPM supõe recursos ilimitados: cada atividade começa assim que as predecessoras permitem. Na prática, a equipe é limitada. Na aba Recursos, <b>alisar</b> (<i>resource smoothing</i>) desloca atividades dentro da folga para reduzir picos sem mudar o prazo, e <b>respeitar um limite</b> (<i>resource leveling</i>) adia atividades até caber no limite, aceitando um prazo maior. O limite usa uma regra de prioridade simples (menor folga primeiro), que dá um bom cronograma, mas não garante o melhor possível.</dd>
-      <dt>Fora desta calculadora</dt><dd>GERT (ramificações probabilísticas), corrente crítica e vários recursos ao mesmo tempo.</dd>
+      <dt>Simulação de Monte Carlo</dt><dd>Método dos anos 1940, que usa sorteios repetidos para estimar o que uma conta direta não alcança. Aqui, sorteia a duração de cada atividade milhares de vezes (distribuição beta-PERT, triangular, uniforme ou normal truncada, à escolha) e mede o prazo do projeto em cada rodada. Corrige o que o PERT clássico ignora: quando há caminhos paralelos, o prazo é o maior entre eles, e por isso a média simulada costuma ficar acima do prazo esperado. Está na aba Probabilidade.</dd>
+      <dt>Carga e nivelamento de recursos</dt><dd>Até três tipos de recurso ao mesmo tempo. O CPM supõe recursos ilimitados: cada atividade começa assim que as predecessoras permitem. Na prática, a equipe é limitada. Na aba Recursos, <b>alisar</b> (<i>resource smoothing</i>) desloca atividades dentro da folga para reduzir picos sem mudar o prazo, e <b>respeitar um limite</b> (<i>resource leveling</i>) adia atividades até caber no limite, aceitando um prazo maior. O limite usa uma regra de prioridade simples (menor folga primeiro), que dá um bom cronograma, mas não garante o melhor possível.</dd>
+      <dt>Corrente crítica (CCPM)</dt><dd>Proposta por Goldratt (1997) a partir da Teoria das Restrições. Em vez de proteger cada atividade com folga própria, usa durações agressivas e concentra a proteção em um pulmão de projeto e em pulmões de convergência. O acompanhamento é pelo gráfico de febre (consumo do pulmão contra avanço da corrente). Está na aba Corrente crítica; aqui a corrente é o caminho crítico com durações agressivas, sem resolver disputa de recursos.</dd>
+      <dt>Valor agregado (EVM) e curva S</dt><dd>Método de controle nascido nos projetos de defesa dos EUA (anos 1960) e consolidado no PMBOK. Compara, numa data, o planejado (PV), o realizado medido em custo planejado (EV) e o gasto (AC). SPI = EV/PV e CPI = EV/AC projetam prazo e custo finais (EAC = BAC/CPI). O tempo agregado (<i>earned schedule</i>) corrige a leitura de prazo do SPI, que tende a 1 no fim do projeto. Está na aba Controle, com marcos e linha de base.</dd>
+      <dt>Curva tempo-custo (Kelley-Fulkerson)</dt><dd>A aba Compressão constrói a curva de custo total por prazo encurtando sempre o conjunto de atividades mais barato que corta todos os caminhos críticos (corte mínimo). A coluna “custo marginal por período” é a inclinação da curva em cada trecho. O método é guloso: exato na grande maioria das redes de sala, mas pode não achar o ótimo quando valeria a pena “desencurtar” uma atividade já comprimida.</dd>
+      <dt>Ramos probabilísticos (GERT simplificado)</dt><dd>GERT (Pritsker, 1966) admite nós em que só alguns ramos acontecem. Aqui, na tabela da aba Probabilidade, cada atividade pode receber uma chance de ocorrer; a simulação de Monte Carlo sorteia se ela acontece em cada rodada. O cálculo determinístico (CPM/PERT) continua supondo que todas ocorrem.</dd>
+      <dt>Fora desta calculadora</dt><dd>GERT completo (laços e nós com lógica “ou exclusivo”), corrente crítica com nivelamento de recursos integrado e otimização exata da curva tempo-custo por programação linear.</dd>
     </dl>
   </div></div>
 </section>
@@ -789,7 +840,7 @@ textarea.ta{width:100%;min-height:140px;border:1px solid var(--borda);border-rad
 </dialog>
 
 <div id="tip" role="tooltip" hidden></div>
-<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script>
+<script src="pratica.js"></script><script src="mc.js"></script><script src="recursos.js"></script><script src="ccpm.js"></script><script src="controle.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
