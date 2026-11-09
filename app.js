@@ -1304,6 +1304,13 @@ const EXEMPLOS = [
     acts: [['A', 'Projeto', 6, [], 4, 800], ['B', 'Fundação', 8, ['A'], 5, 900],
     ['C', 'Instalações', 5, ['A'], 3, 400], ['D', 'Estrutura', 7, ['B'], 4, 1100],
     ['E', 'Acabamento', 4, ['C'], 3, 300], ['F', 'Entrega', 3, ['D', 'E'], 2, 600]]
+  },
+  {
+    nome: 'Electrolux TF41B · lançamento (PERT, semanas)', modo: 'pert', unidade: 's',
+    acts: [['A', 'Projeto detalhado do gabinete', [3, 5, 7], [], 3, 8], ['B', 'Homologação do compressor importado', [10, 14, 24], [], 10, 12],
+    ['C', 'Adaptação da linha de injeção (PU)', [5, 8, 11], ['A'], 5, 5], ['D', 'Compra e setup do ferramental', [4, 6, 8], ['A'], 4, 6],
+    ['E', 'Testes elétricos e de eficiência', [3, 4, 5], ['B', 'C'], 3, 7], ['F', 'Embalagem e plano logístico', [2, 3, 4], ['D'], 2, 4],
+    ['G', 'Lote piloto e validação', [4, 6, 8], ['E'], 4, 9], ['H', 'Homologação Inmetro e PROCEL', [5, 8, 11], ['F', 'G'], 5, 10]]
   }
 ];
 /* Exemplo guiado da aba Dados: 4 atividades, resultado conhecido (12 dias, A → B → D, folga de C = 2).
@@ -1860,6 +1867,8 @@ function pararAnimacao() { if (animando) { clearInterval(animando); animando = n
     carregar(estadoVazio());
     toast('Não consegui abrir o projeto anterior; comecei um novo.');
   }
+  /* Link direto da aula: ?exemplo=tf41b abre o caso Electrolux pronto (T = 33 semanas, B → E → G → H). */
+  try { if (/[?&]exemplo=tf41b\b/i.test(location.search)) carregarExemplo(EXEMPLOS.findIndex(e => /TF41B/.test(e.nome))); } catch (e) { }
   try { if (typeof iniciaPratica === 'function') iniciaPratica(); } catch (e) { }
   addEventListener('beforeunload', gravarEstado);
   contarVisita();
