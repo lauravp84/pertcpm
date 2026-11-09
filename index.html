@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1A3A6B">
 <script>/* links antigos (projeto/exercicio compartilhado) e EN/ES seguem na versao classica */
-(function(){var h=location.hash,l=new URLSearchParams(location.search).get('lang');if(/^#(proj|ex)=/.test(h)||l==='en'||l==='es')location.replace('classica.html'+location.search+h);})();</script>
+(function(){var h=location.hash,l=new URLSearchParams(location.search).get('lang');if(/^#ex=/.test(h))location.replace('classica.html'+location.search+h);})();</script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -20,6 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap" rel="stylesheet">
 <script src="pertcpm-engine.js"></script>
 <script src="pertcpm-textos.js"></script>
+<script src="novo-extras.js"></script>
 <style>body{margin:0;background:#F1EEE8;color:#16243B;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}a{color:#1A3A6B;text-decoration:none}a:hover{color:#B3392C}input,button,select,textarea{font:inherit;color:inherit}input:focus,select:focus,textarea:focus{outline:2px solid #1A3A6B;outline-offset:-1px}button{cursor:pointer}</style>
 </helmet>
 <div style="min-height:100vh;display:flex;flex-direction:column;zoom:{{ zoom }}">
@@ -527,6 +528,41 @@
   </sc-if>
 </div>
 </x-dc>
+<style>#capa{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px 16px;text-align:center;background:radial-gradient(circle at 50% 38%,#FFFFFF 0,#F4F0E8 55%,#E9E2D3 100%);transition:opacity .6s,visibility .6s}
+#capa.sai{opacity:0;visibility:hidden}
+#capa .rede-fundo{position:absolute;inset:0;width:100%;height:100%;opacity:.13;pointer-events:none}
+#capa .rede-fundo path{fill:none;stroke:#1A3A6B;stroke-width:2;stroke-dasharray:900;stroke-dashoffset:900;animation:capaTraco 3s ease forwards}
+#capa .rede-fundo circle{fill:#C9A227;opacity:0;animation:capaNo .5s ease forwards}
+@keyframes capaTraco{to{stroke-dashoffset:0}}@keyframes capaNo{to{opacity:1}}
+#capa .capa-sim{width:clamp(70px,12vw,120px);height:auto;animation:capaSobe .9s ease both}
+#capa .capa-logo{width:min(640px,88vw);height:auto;animation:capaSobe .9s .25s ease both}
+#capa .capa-frase{font:400 clamp(15px,2.2vw,19px)/1.5 var(--texto);color:#16243B;max-width:560px;animation:capaSobe .9s .5s ease both}
+#capa .capa-btn{font:600 16px var(--texto);background:#1A3A6B;color:#fff;border:0;border-radius:999px;padding:13px 34px;cursor:pointer;box-shadow:0 4px 14px rgba(26,58,107,.3);animation:capaSobe .9s .75s ease both}
+#capa .capa-btn:hover{background:#C9A227;color:#16243B}
+#capa .capa-ass{margin-top:6px;font:500 12px var(--mono,monospace);color:#6b6b6b;letter-spacing:.08em}
+@keyframes capaSobe{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#capa *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}</style>
+<div id="capa" role="dialog" aria-label="Abertura">
+  <svg class="rede-fundo" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <path d="M60 300 L220 160 L420 120 L620 200 L800 140 L950 300 M220 160 L260 420 L480 470 L700 400 L950 300 M420 120 L480 470 M620 200 L700 400"/>
+    <circle cx="60" cy="300" r="12" style="animation-delay:.2s"/><circle cx="220" cy="160" r="12" style="animation-delay:.6s"/><circle cx="420" cy="120" r="12" style="animation-delay:1s"/><circle cx="620" cy="200" r="12" style="animation-delay:1.4s"/><circle cx="800" cy="140" r="12" style="animation-delay:1.8s"/><circle cx="260" cy="420" r="12" style="animation-delay:1s"/><circle cx="480" cy="470" r="12" style="animation-delay:1.6s"/><circle cx="700" cy="400" r="12" style="animation-delay:2.2s"/><circle cx="950" cy="300" r="14" style="animation-delay:2.6s"/>
+  </svg>
+  <img class="capa-sim" src="img/simbolo.webp" alt="" width="360" height="294">
+  <img class="capa-logo" src="img/logo-pequeno.webp" alt="GEO PERT/CPM · Gestão Estratégica de Operações" width="970" height="194">
+  <p class="capa-frase">Calculadora didática de redes PERT/CPM: caminho crítico, folgas, probabilidade de prazo e muito mais.</p>
+  <button class="capa-btn" type="button" id="capaEntrar">Começar</button>
+  <div class="capa-ass">@LMVN 2026</div>
+</div>
+<script>(function(){var c=document.getElementById('capa'),q=new URLSearchParams(location.search);
+var visto=false;try{visto=sessionStorage.getItem('pertcpm.capa')==='1'}catch(e){}
+if(visto||/^#(proj|ex)=/.test(location.hash)){c.remove();return}
+function sai(){try{sessionStorage.setItem('pertcpm.capa','1')}catch(e){}c.classList.add('sai');setTimeout(function(){c.remove()},700)}
+document.getElementById('capaEntrar').onclick=sai;document.addEventListener('keydown',function k(e){if(e.key==='Enter'||e.key==='Escape'){sai();document.removeEventListener('keydown',k)}});
+document.getElementById('capaEntrar').focus();})();</script>
+<script>(function(){var c=document.getElementById('capa');if(!c)return;var L='pt';try{var q=new URLSearchParams(location.search).get('lang'),u=JSON.parse(localStorage.getItem('geo-pertcpm-site-v1-ui')||'{}');L=['pt','en','es'].indexOf(q)>=0?q:(u.lang||(['en','es'].indexOf(String(navigator.language).slice(0,2))>=0?String(navigator.language).slice(0,2):'pt'))}catch(e){}
+if(L==='pt')return;var T={en:['Educational PERT/CPM network calculator: critical path, slack, deadline probability and much more.','Start','Strategic Operations Management'],es:['Calculadora didáctica de redes PERT/CPM: ruta crítica, holguras, probabilidad de plazo y mucho más.','Comenzar','Gestión Estratégica de Operaciones']}[L];
+c.querySelector('.capa-frase').textContent=T[0];c.querySelector('.capa-btn').textContent=T[1];var g=c.querySelector('.capa-logo');g.src='img/logo-titulo.webp';g.height=180;var s=document.createElement('div');s.textContent=T[2];s.style.cssText='font:500 clamp(15px,2.4vw,22px)/1.2 IBM Plex Sans,sans-serif;letter-spacing:.06em;color:#1A3A6B;margin-top:-8px';g.insertAdjacentElement('afterend',s)})();</script>
+
 <script type="text/x-dc" data-dc-script data-props="{&quot;notacao&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;IC/TC&quot;,&quot;ES/EF&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Método&quot;},&quot;perguntas&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Didática&quot;}}">
 const KEY='geo-pertcpm-site-v1';
 const BL={c:'',n:'',d:'',p:'',o:'',m:'',pe:'',dc:'',cn:'',cc:'',r:'',r2:'',r3:'',pct:'',ar:''};
@@ -551,7 +587,7 @@ const blankObj=()=>new Proxy({},{get:(t,k)=>typeof k==='string'?'':undefined});
 class Component extends DCLogic{
   constructor(p){super(p);let s=null,ui={};try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){}try{ui=JSON.parse(localStorage.getItem(KEY+'-ui'))||{}}catch(e){}
     try{if(location.hash.startsWith('#proj='))s=JSON.parse(unb64(location.hash.slice(6)))}catch(e){}
-    this.state={page:0,sel:null,ans:'',fb:null,data:migrate(s),pr:null,mc:null,lang:ui.lang||'pt',proj:!!ui.proj,modal:null,menu:false,txt:'',name:'',busy:false,msg:'',msgOk:true,preview:null,ready:!!(window.PERTENG&&window.PERTTXT)}}
+    this.state={page:0,sel:null,ans:'',fb:null,data:migrate(s),pr:null,mc:null,lang:(()=>{const q=new URLSearchParams(location.search).get('lang');if(['pt','en','es'].includes(q))return q;if(ui.lang)return ui.lang;const n=String(navigator.language||'pt').slice(0,2);return['en','es'].includes(n)?n:'pt'})(),proj:!!ui.proj,modal:null,menu:false,txt:'',name:'',busy:false,msg:'',msgOk:true,preview:null,ready:!!(window.PERTENG&&window.PERTTXT)}}
   componentDidMount(){const go=()=>this.setState({ready:true,pr:{acts:window.PERTENG.genPractice(),ans:{},checked:false}});
     if(this.state.ready)go();else this.iv=setInterval(()=>{if(window.PERTENG&&window.PERTTXT){clearInterval(this.iv);go()}},60);
     try{fetch('/api/hit?p=/').catch(()=>{})}catch(e){}
@@ -768,7 +804,11 @@ class Component extends DCLogic{
       menu:st.menu,toggleMenu:()=>this.setState({menu:!st.menu}),openAssist:()=>this.openModal('assist'),openContact:e=>{if(e)e.preventDefault();this.openModal('contato')},
       menuItems:[{t:$('Salvar projeto','Save project','Guardar proyecto'),on:()=>this.openModal('salvar')},{t:$('Abrir projeto','Open project','Abrir proyecto'),on:()=>this.openModal('abrir')},
         {t:$('Copiar link do projeto','Copy project link','Copiar enlace del proyecto'),on:()=>{const url=location.href.split('#')[0]+'#proj='+b64(JSON.stringify(data));try{navigator.clipboard.writeText(url)}catch(e){}this.openModal('link',{txt:url})}},
-        {t:$('Colar do Excel','Paste from Excel','Pegar de Excel'),on:()=>this.openModal('colar')},{t:$('Projeto em branco','Blank project','Proyecto en blanco'),on:()=>apply({...DEF,acts:[A({c:'A'})],marcos:[]})}],
+        {t:$('Colar do Excel','Paste from Excel','Pegar de Excel'),on:()=>this.openModal('colar')},
+        {t:$('Importar do MS Project (XML)','Import from MS Project (XML)','Importar de MS Project (XML)'),on:()=>{this.setState({menu:false});window.NX.msProject(r=>{if(!r){alert($('Não consegui ler este arquivo como XML do MS Project (Arquivo ▸ Salvar como ▸ XML).','Could not read this file as MS Project XML (File ▸ Save as ▸ XML).','No pude leer este archivo como XML de MS Project (Archivo ▸ Guardar como ▸ XML).'));return}apply({...DEF,acts:r.acts.map(a=>A(a)),mode:'CPM',marcos:[]})})}},
+        {t:$('Baixar Excel (.xlsx)','Download Excel (.xlsx)','Descargar Excel (.xlsx)'),on:()=>{this.setState({menu:false});if(!window.NX.xlsx(data,$))alert($('Corrija a tabela antes de exportar.','Fix the table before exporting.','Corrija la tabla antes de exportar.'))}},
+        {t:$('Baixar CSV','Download CSV','Descargar CSV'),on:()=>{this.setState({menu:false});if(!window.NX.csv(data,$))alert($('Corrija a tabela antes de exportar.','Fix the table before exporting.','Corrija la tabla antes de exportar.'))}},
+        {t:$('Relatório para imprimir / PDF','Printable report / PDF','Informe para imprimir / PDF'),on:()=>{this.setState({menu:false});if(!window.NX.relatorio(data,$))alert($('Corrija a tabela ou permita janelas pop-up.','Fix the table or allow pop-ups.','Corrija la tabla o permita ventanas emergentes.'))}},{t:$('Projeto em branco','Blank project','Proyecto en blanco'),on:()=>apply({...DEF,acts:[A({c:'A'})],marcos:[]})}],
       hasModal:!!mm,closeModal:close,stop:e=>e.stopPropagation(),modalTitle:mm?mm.title:'',modalText:mm?mm.text:'',mHasName:!!(mm&&mm.name),mHasTxt:!!(mm&&mm.txt)&&!st.preview,mHasList:!!(mm&&mm.list)&&saved.length>0,mHasLinks:!!(mm&&mm.links),
       mHasPreview:!!st.preview&&st.modal==='assist',preview:st.preview?st.preview.acts.map(a=>({c:a.c,n:a.n,d:st.preview.mode==='PERT'?a.o+' / '+a.m+' / '+a.pe:a.d,p:a.p||'—'})):[],
       name:st.name,onName:e=>this.setState({name:e.target.value}),txt:st.txt,onTxt:e=>this.setState({txt:e.target.value}),txtPh:mm&&mm.ph?mm.ph:'',
