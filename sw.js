@@ -1,5 +1,5 @@
 /* Service worker — deixa a calculadora funcionar offline. */
-const CACHE = 'pertcpm-v30';
+const CACHE = 'pertcpm-v31';
 /* As fontes do subconjunto latino entram na instalacao: sem elas o app abre
    offline com a fonte do sistema e perde a identidade. O latin-ext entra sob demanda. */
 const ARQUIVOS = ['./', './index.html', './app.js', './pratica.js', './mc.js', './recursos.js', './ccpm.js', './controle.js', './didatica.js', './extras.js', './manifest.json', './fontes/fontes.css',

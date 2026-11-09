@@ -46,7 +46,9 @@ function ccCalcular(c) {
     const folga = A.N.get(id).FT;
     feeds.push({ seq, antesDe: entra.length ? entra.sort((x, y) => A.N.get(x).ES - A.N.get(y).ES)[0] : 'FIM', FB, folga, cabe: FB <= folga + 1e-9 });
   });
-  const durAgr = A.dur, durSeg = c.dur, protegido = durAgr + PB;
+  const durAgr = A.dur, protegido = durAgr + PB;
+  /* prazo "com margens": no CPM, as durações informadas; no PERT, cada atividade no pessimista (p) */
+  const durSeg = state.modo === 'pert' ? calcular(seg).dur : c.dur;
   return { A, cadeia, PB, feeds, durAgr, durSeg, protegido, metodo, corte, seg, agr, margem };
 }
 
@@ -77,7 +79,7 @@ function renderCCPM() {
   const r = ccCalcular(c); if (!r) { box.innerHTML = '<p class="hint">Não foi possível calcular com as durações agressivas.</p>'; return; }
   const metodoTxt = r.metodo === 'rss' ? 'raiz da soma dos quadrados das margens' : 'metade da soma das margens (regra dos 50%)';
   let h = '<div class="kpis">' +
-    '<div class="kpi"><div class="olho">Prazo com margens (CPM)</div><div class="v">' + fmt(r.durSeg) + '</div></div>' +
+    '<div class="kpi"><div class="olho">Prazo com margens' + (state.modo === 'pert' ? ' (todas no pessimista)' : '') + '</div><div class="v">' + fmt(r.durSeg) + '</div></div>' +
     '<div class="kpi"><div class="olho">Corrente agressiva</div><div class="v">' + fmt(r.durAgr) + '</div></div>' +
     '<div class="kpi"><div class="olho">Pulmão de projeto</div><div class="v navy">' + fmt(r.PB) + '</div></div>' +
     '<div class="kpi"><div class="olho">Prazo protegido</div><div class="v" style="color:var(--folga)">' + fmt(r.protegido) + ' ' + uni(r.protegido) + '</div></div></div>';

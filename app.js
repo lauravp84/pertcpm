@@ -1259,6 +1259,24 @@ const EXEMPLOS = [
     ['E', 'Integração 1', 4, ['B']], ['F', 'Integração 2', 3, ['C', 'D']], ['G', 'Entrega', 2, ['E', 'F']]]
   },
   {
+    nome: 'Cenário · Obra residencial (15 atividades)', modo: 'cpm', unidade: 'd', custoDir: 150000, custoInd: 900, recNomes: ['operários', '', ''],
+    acts: [['A', 'Licenças e projeto', 5, [], 3, 200, 2], ['B', 'Terraplenagem', 10, ['A'], 7, 250, 3], ['C', 'Fundação', 15, ['B'], 12, 300, 4], ['D', 'Estrutura térreo', 8, ['C'], 5, 350, 5],
+    ['E', 'Alvenaria', 12, ['C'], 9, 400, 2], ['F', 'Laje', 6, ['D'], 3, 450, 3], ['G', 'Instalação elétrica', 9, ['D', 'E'], 6, 500, 4], ['H', 'Instalação hidráulica', 7, ['E'], 4, 550, 5],
+    ['I', 'Telhado', 10, ['F', 'G'], 7, 600, 2], ['J', 'Reboco', 5, ['G', 'H'], 2, 650, 3], ['K', 'Esquadrias', 8, ['I'], 5, 700, 4], ['L', 'Piso', 6, ['J'], 3, 750, 5],
+    ['M', 'Pintura', 4, ['K', 'L'], 1, 800, 2], ['N', 'Limpeza', 3, ['M'], 1, 850, 3], ['O', 'Vistoria e entrega', 2, ['N'], 1, 900, 4]]
+  },
+  {
+    nome: 'Cenário · Software com incerteza alta (PERT)', modo: 'pert', unidade: 's',
+    acts: [['A', 'Levantamento de requisitos', [2, 4, 12], []], ['B', 'Arquitetura', [3, 6, 20], ['A']], ['C', 'Protótipo de telas', [1, 3, 9], ['A']],
+    ['D', 'Desenvolvimento do núcleo', [4, 8, 30], ['B']], ['E', 'Desenvolvimento das telas', [2, 5, 15], ['C']], ['F', 'Integração', [3, 5, 10], ['D', 'E']],
+    ['G', 'Testes automatizados', [1, 2, 8], ['F']], ['H', 'Testes com usuários', [2, 4, 16], ['F']], ['I', 'Correções', [1, 2, 5], ['G', 'H']], ['J', 'Implantação', [1, 1, 3], ['I']]]
+  },
+  {
+    nome: 'Cenário · Evento com sobreposição (PDM)', modo: 'cpm', unidade: 'd',
+    acts: [['A', 'Contratação do local', 10, []], ['B', 'Divulgação', 6, ['A']], ['C', 'Inscrições', 8, ['A(II+3)']], ['D', 'Credenciamento', 5, ['B', 'C(TT+1)']],
+    ['E', 'Montagem', 4, ['C(-2)']], ['F', 'Ensaio geral', 3, ['D', 'E']], ['G', 'Abertura', 2, ['F(II+1)']], ['H', 'Evento e encerramento', 1, ['F', 'G']]]
+  },
+  {
     nome: 'Projeto para compressão', modo: 'cpm', unidade: 'd', custoDir: 12000, custoInd: 500,
     acts: [['A', 'Projeto', 6, [], 4, 800], ['B', 'Fundação', 8, ['A'], 5, 900],
     ['C', 'Instalações', 5, ['A'], 3, 400], ['D', 'Estrutura', 7, ['B'], 4, 1100],
@@ -1303,6 +1321,7 @@ function carregarExemplo(i) {
     if (ex.rec) o.rec = ex.rec[ex.acts.indexOf(a)];
     if (ex.rec2) o.rec2 = ex.rec2[ex.acts.indexOf(a)];
     if (a.length > 4) { o.dmin = a[4]; o.cc = a[5]; }
+    if (a.length > 6) o.rec = a[6];
     return o;
   });
   carregar(st);
@@ -1357,7 +1376,7 @@ function abrirDlg(titulo, corpo, botoes) {
 const alerta = msg => abrirDlg('Atenção', '<p>' + esc(msg) + '</p>', [['Entendi', () => $('#dlg').close(), true]]);
 const alertaHtml = html => abrirDlg('Atenção', '<p>' + html + '</p>', [['Entendi', () => $('#dlg').close(), true]]);   /* só texto fixo do app */
 let toastT = null;
-const VERSAO = 'v30';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
+const VERSAO = 'v31';   /* igual ao CACHE do sw.js; aparece no rodapé para identificar a versão em relatos de problema */
 function toast(msg, confiavel) {
   let el = $('#toast');
   if (!el) {
