@@ -29,6 +29,7 @@ const TETO_COMBOS = 4000;
 /* ---------- estado ---------- */
 const novoAtv = (id, nome) => ({ id, nome: nome || '', d: 1, o: 1, m: 1, p: 1, preds: [], dmin: '', cc: '' });
 let state = null, calcOut = null, passo = 3, animando = null;
+let zoomRede = (typeof innerWidth === 'number' && innerWidth < 700) ? 1.1 : 1.4;   /* o diagrama aparece maior; A− e A+ ajustam */
 
 function estadoVazio() {
   return {
@@ -527,7 +528,7 @@ function renderRede() {
       (ar.tip ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="14" data-tip="' + esc(ar.tip) + '"/>' : '');
   };
 
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg) + '" height="' + Math.round(altura) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(larg * zoomRede) + '" height="' + Math.round(altura * zoomRede) + '" viewBox="0 0 ' + Math.round(larg) + ' ' + Math.round(altura) + '" font-family="IBM Plex Sans, sans-serif">';
   s += '<defs>';
   [['ar', C.aresta], ['arc', C.critico], ['arf', C.fantasmaBorda]].forEach(par => {
     s += '<marker id="' + par[0] + '" viewBox="0 0 9 9" refX="8" refY="4.5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="' + par[1] + '"/></marker>';
@@ -547,7 +548,7 @@ function renderRede() {
     const p = pos.get(n.id);
     const corB = n.crit ? C.critico : C.neutro;
     const fundo = n.crit ? C.criticoFundo : '#FFFFFF';
-    s += '<g data-tip="' + esc(tipAtiv(n)) + '">';
+    s += '<g>';
     s += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="4" fill="' + fundo + '" stroke="' + corB + '" stroke-width="1.5"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + 1) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
     s += '<rect x="' + (p.x + 1) + '" y="' + (p.y + p.h - 24) + '" width="' + (p.w - 2) + '" height="23" fill="rgba(0,0,0,.025)"/>';
@@ -577,6 +578,15 @@ function renderRede() {
       s += '<rect x="' + (p.x + p.w - 6 - bw) + '" y="' + (p.y + 30) + '" width="' + bw + '" height="17" rx="3" fill="' + (n.crit ? C.critico : C.folgaFundo) + '"/>';
       s += '<text x="' + (p.x + p.w - 6 - bw / 2) + '" y="' + (p.y + 42) + '" text-anchor="middle"' + mono + ' font-size="12" fill="' + (n.crit ? '#FFFFFF' : C.folga) + '">' + rot + '</text>';
     }
+    /* explicação curta em cima de cada número: passe o mouse (ou toque) */
+    const hit = (hx, hy, hw, hh, txt) => '<rect x="' + hx + '" y="' + hy + '" width="' + hw + '" height="' + hh + '" fill="transparent" data-tip="' + esc(txt) + '"/>';
+    const meio = p.w / 2;
+    s += hit(p.x, p.y, meio, 24, sg('ES') + ' = ' + fmt(n.ES) + ' · ' + sgNome('ES') + '\n' + 'O mais cedo que ' + n.id + ' pode começar.');
+    s += hit(p.x + meio, p.y, meio, 24, sg('EF') + ' = ' + fmt(n.EF) + ' · ' + sgNome('EF') + '\n' + 'O mais cedo que ' + n.id + ' pode terminar (' + sg('ES') + ' + duração).');
+    s += hit(p.x, p.y + p.h - 24, meio, 24, sg('LS') + ' = ' + fmt(n.LS) + ' · ' + sgNome('LS') + '\n' + 'O mais tarde que ' + n.id + ' pode começar sem atrasar o projeto.');
+    s += hit(p.x + meio, p.y + p.h - 24, meio, 24, sg('LF') + ' = ' + fmt(n.LF) + ' · ' + sgNome('LF') + '\n' + 'O mais tarde que ' + n.id + ' pode terminar sem atrasar o projeto.');
+    s += hit(p.x, p.y + 24, p.w - (mostraS ? 12 + rot.length * 7 + 12 : 0), p.h - 48, n.id + (n.nome ? ' · ' + n.nome : '') + '\n' + 'Dura ' + fmt(n.dur) + ' ' + uni(n.dur) + '. ' + (n.preds.length ? 'Depende de ' + n.preds.join(', ') + '.' : 'Começa o projeto.'));
+    if (mostraS) s += hit(p.x + p.w - 6 - bw, p.y + 28, bw + 6, 22, n.crit ? 'Folga total 0: atividade crítica.\nUm atraso aqui atrasa o projeto inteiro.' : 'Folga total ' + fmt(n.FT) + ' ' + uni(n.FT) + '.\n' + n.id + ' pode atrasar esse tempo sem atrasar o projeto.');
     s += '</g>';
   });
   s += '</svg>';
@@ -729,9 +739,8 @@ function ligaTips() {
   const mostra = (txt, x, y) => {
     tip.textContent = txt; tip.hidden = false;
     const w = tip.offsetWidth, h = tip.offsetHeight;
-    let px = x + 16, py = y + 18;
-    if (px + w > innerWidth - 8) px = Math.max(8, x - w - 12);
-    if (py + h > innerHeight - 8) py = Math.max(8, y - h - 12);
+    let px = Math.min(Math.max(8, x - w / 2), innerWidth - w - 8), py = y - h - 16;   /* acima do ponteiro; se não couber, abaixo */
+    if (py < 8) py = Math.min(y + 22, innerHeight - h - 8);
     tip.style.left = px + 'px'; tip.style.top = py + 'px';
   };
   const alvo = e => e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
@@ -1825,6 +1834,8 @@ function ligar() {
   $('#btnContato').onclick = dlgContato;
   $('#btnMC').onclick = mcRodar;
   montaPassos(); ligaTips();
+  $('#btnZmMenos').onclick = () => { zoomRede = Math.max(0.7, +(zoomRede - 0.2).toFixed(2)); renderRede(); };
+  $('#btnZmMais').onclick = () => { zoomRede = Math.min(2.4, +(zoomRede + 0.2).toFixed(2)); renderRede(); };
   $('#btnRec').onclick = recRodar;
   $('#recModo').onchange = e => { state.recModo = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
   $('#recRegra').onchange = e => { state.recRegra = e.target.value; rcRes = null; renderRec(); gravarEstado(); };
