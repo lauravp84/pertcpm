@@ -691,14 +691,14 @@ class Component extends DCLogic{
     out.table=N.map(x=>({c:x.c,d:nf(x.d),es:nf(x.es),ef:nf(x.ef),ls:nf(x.ls),lf:nf(x.lf),slack:nf(x.slack),slackColor:x.crit?'#B3392C':'#2E7386',codeColor:x.crit?'#B3392C':'#1A3A6B',bg:x.c===selC?'rgba(26,58,107,.1)':x.crit?'#FBEFEC':'transparent',pick:pick(x.c)}));
     const pathLen=p=>p.reduce((s,c)=>s+M[c].d,0);
     out.paths=!ok?[]:R.pdm?[{seq:R.order.filter(c=>M[c].crit).join(' → '),t:R.dur,total:nf(R.dur)+' '+un,tag:$('atividades críticas · relações PDM','critical activities · PDM relations','actividades críticas · relaciones PDM'),color:'#B3392C',edge:'#B3392C'}]
-      :R.paths.map(p=>{const t=pathLen(p),c=Math.abs(t-R.dur)<1e-9;return{seq:p.join(' → '),t,total:nf(t)+' '+un,tag:c?$('crítico','critical','crítico'):'',color:c?'#B3392C':'#2C3A50',edge:c?'#B3392C':'#DED8CE'}}).sort((a,b)=>b.t-a.t);
+      :R.paths.map(p=>{const t=pathLen(p),c=Math.abs(t-R.dur)<1e-9;return{seq:p.join(' → '),t,total:nf(t)+' '+un,tag:c?$('crítico','critical','crítico'):'',color:c?'#B3392C':'#2C3A50',edge:c?'#B3392C':'#DED8CE'}}).sort((a,b)=>b.t-a.t).concat(R.trunc?[{seq:$('A rede tem mais caminhos: a lista mostra 80.','The network has more paths: the list shows 80.','La red tiene más caminos: la lista muestra 80.'),t:-1,total:'',tag:'',color:'#5C6A80',edge:'#DED8CE'}]:[]);
     const mkTicks=D=>{const t=[];const stp=D<=10?1:D<=20?2:D<=50?5:Math.ceil(D/10/5)*5;for(let v=0;v<=D+1e-9;v+=stp)t.push({v,left:v/D*100});return t};
     const DG=Math.ceil(R.dur||1)||1;out.ticks=ok?mkTicks(DG):[];
     out.gantt=N.map(x=>({c:x.c,n:x.n,left:x.es/DG*100,width:x.d/DG*100,sLeft:x.ef/DG*100,sWidth:x.slack/DG*100,sDisplay:x.slack>0?'block':'none',color:x.crit?'#B3392C':'#1A3A6B',rowBg:x.c===selC?'rgba(26,58,107,.08)':'transparent',pick:pick(x.c)}));
     out.endDate=ok?E.addUnits(data.start,R.dur,unit,data.util,loc):'—';
     // 7 probability
     out.needPert=!pert;out.hasPert=pert&&ok;
-    if(pert&&ok&&page===6){let cp;if(!R.pdm){const cps=R.paths.filter(p=>Math.abs(pathLen(p)-R.dur)<1e-9),vo=p=>p.reduce((s,c)=>s+M[c].v,0);cp=cps.length?cps.reduce((a,b)=>vo(b)>vo(a)?b:a):R.order.filter(c=>M[c].crit)}else cp=R.order.filter(c=>M[c].crit);
+    if(pert&&ok&&page===6){let cp=E.critPath(R,c=>M[c].v);if(!cp.length)cp=R.order.filter(c=>M[c].crit);
       const Te=R.dur,v=cp.reduce((s,c)=>s+M[c].v,0),sd=Math.sqrt(v),T=data.prazo!=null&&data.prazo!==''?num(data.prazo):Math.round(Te+sd);const Z=sd>0?(T-Te)/sd:(T>=Te?Infinity:-Infinity),Pn=sd>0?E.Phi(Z):(T>=Te?1:0);
       const sdv=sd||1,lo=Te-4*sdv,hi=Te+4*sdv,Xp=x=>20+(x-lo)/(hi-lo)*480,Yp=x=>sd>0?180-150*Math.exp(-(((x-Te)/sd)**2)/2):180;let line='',area='';
       for(let i=0;i<=80;i++){const x=lo+(hi-lo)*i/80;line+=(i?'L':'M')+Xp(x).toFixed(1)+' '+Yp(x).toFixed(1)}
@@ -720,6 +720,7 @@ class Component extends DCLogic{
       out.crashRows=C.rows.map(r=>{const o=r===C.opt;return{dur:nf(r.dur),cut:r.cut.length?r.cut.join(' + ')+(r.delta<1-1e-9?' ('+nf(r.delta)+')':''):'—',direct:money(r.direct),ind:money(r.ind),total:money(r.total),w:r.total/maxT*60,barC:o?'#B3392C':'#9AA6B8',totC:o?'#B3392C':'#16243B',totW:o?700:400,bg:o?'#FBEFEC':'transparent'}});
       out.ci=data.ci;out.onCi=e=>this.setData({ci:e.target.value});
       calcTitle=$('Prazo de menor custo','Lowest-cost duration','Plazo de menor costo');calcLines=[V(T.ci+' '+unitOne,money(ci)),V($('Duração normal','Normal duration','Duración normal'),nf(C.rows[0].dur)+' · '+money(C.rows[0].total)),V($('Duração ótima','Optimal duration','Duración óptima'),nf(C.opt.dur)+' '+un,'#B3392C'),V($('Custo total mínimo','Minimum total cost','Costo total mínimo'),money(C.opt.total),'#B3392C'),V($('Duração mínima possível','Shortest possible','Duración mínima posible'),nf(C.rows[C.rows.length-1].dur)+' '+un)];
+      if(C.warn.length)calcLines.push(V($('Custo acelerado menor que o normal (tratado como igual)','Crash cost below normal cost (treated as equal)','Costo acelerado menor que el normal (tratado como igual)'),C.warn.join(', '),'#B3392C'));
       calcHint=$('Vale reduzir enquanto o custo por '+unitOne+' da redução for menor que o custo indireto.','Shortening pays while its cost per '+unitOne+' is below the indirect cost.','Conviene reducir mientras el costo por '+unitOne+' sea menor que el costo indirecto.');
       if(checks)check={q:$('Qual é a duração de menor custo total?','Which duration has the lowest total cost?','¿Qué duración tiene el menor costo total?'),a:C.opt.dur,dica:$('Procure a linha com o menor total.','Find the row with the lowest total.','Busque la fila con el menor total.')}}
     // 9 resources
